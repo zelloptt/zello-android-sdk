@@ -353,7 +353,7 @@ public class RecorderMicrophone implements AudioSource {
 				boolean bell;
 				int canRead;
 				long readStartTime = SystemClock.elapsedRealtime();
-				short tmp[] = null; // Only used when running on Android 5.0.1-5.0.2 and the destination array offset is different from 0
+				short[] tmp = null; // Only used when running on Android 5.0.1-5.0.2 and the destination array offset is different from 0
 
 				while (true) {
 					int nextRead;

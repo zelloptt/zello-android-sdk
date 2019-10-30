@@ -128,18 +128,19 @@ internal class Audio private constructor(context: Context, val logger: SessionLo
 
 	companion object {
 
+		// FIXME: Make this some kind of language-appropriate late-initialized property to clean up casting in getter
 		private var _manager: Audio? = null
 
-		@JvmStatic operator fun get(context: Context, logger: SessionLogger?): Audio? {
+		@JvmStatic operator fun get(context: Context, logger: SessionLogger?): Audio {
 			if (_manager != null) {
-				return _manager;
+				return _manager as Audio
 			}
 			synchronized(Audio::class.java) {
 				if (_manager == null) {
 					_manager = Audio(context.applicationContext, logger)
 				}
 			}
-			return _manager
+			return _manager as Audio
 		}
 	}
 
