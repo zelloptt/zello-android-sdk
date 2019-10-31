@@ -127,19 +127,14 @@ internal class Audio private constructor(context: Context, val logger: SessionLo
 	}
 
 	companion object {
+		private var manager: Audio? = null
 
-		private var _manager: Audio? = null
-
-		@JvmStatic operator fun get(context: Context, logger: SessionLogger?): Audio? {
-			if (_manager != null) {
-				return _manager;
-			}
+		@JvmStatic operator fun get(context: Context, logger: SessionLogger?): Audio {
 			synchronized(Audio::class.java) {
-				if (_manager == null) {
-					_manager = Audio(context.applicationContext, logger)
-				}
+				val manager = this.manager ?: Audio(context.applicationContext, logger)
+				this.manager = manager
+				return manager
 			}
-			return _manager
 		}
 	}
 
