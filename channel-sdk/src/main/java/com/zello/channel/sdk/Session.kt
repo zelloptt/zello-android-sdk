@@ -1,6 +1,7 @@
 package com.zello.channel.sdk
 
 import android.content.Context
+import android.graphics.Bitmap
 import com.zello.channel.sdk.commands.Command
 import com.zello.channel.sdk.commands.CommandLogon
 import com.zello.channel.sdk.platform.Utils
@@ -9,6 +10,7 @@ import com.zello.channel.sdk.transport.TransportEvents
 import com.zello.channel.sdk.transport.TransportReadAck
 import com.zello.channel.sdk.transport.TransportWebSockets
 import org.json.JSONObject
+import java.util.EnumSet
 
 /**
  * Main SDK object that manages the outgoing and incoming messages
@@ -144,6 +146,83 @@ class Session internal constructor(
         }
     }
 
+	// TODO: Make sure this is still easily usable from Java
+	enum class ChannelFeature {
+		ImageMessages,
+		TextMessages,
+		LocationMessages
+	}
+
+	var channelFeatures: EnumSet<ChannelFeature> = EnumSet.noneOf(ChannelFeature::class.java)
+		private set
+
+
+
+	/// NEW API
+	/**
+	 * Sends a text message to the channel
+	 *
+	 * @param message the message to send
+	 */
+	fun sendText(message: String) {
+		// TODO: Implement sendText(message:)
+	}
+
+	/**
+	 * Sends a text message to the channel
+	 *
+	 * @param message the message to send
+	 * @param recipient The username for the user to send the message to. Other users in the channel
+	 * won't receive the message.
+	 */
+	fun sendText(message: String, recipient: String) {
+		// TODO: Implement sendText(message:, recipient:)
+	}
+
+	/**
+	 * Sends an image message to the channel
+	 *
+	 * The Zello channels client will resize images that are larger than 1,280x1,280 to have a maximum
+	 * height or width of 1,280 pixels. A 90x90 thumbnail will also be generated and sent before the
+	 * full-sized image data is sent.
+	 *
+	 * If an error is encountered while sending the image, the `SessionListener` method `onError()` will
+	 * be called with an error describing what went wrong.
+	 *
+	 * @param image the image to send
+	 *
+	 * @return `true` if the image metadata was sent successfully. `false` if an error was encountered
+	 * before the image metadata could be sent.
+	 */
+	fun sendImage(image: Bitmap): Boolean {
+		// TODO: Implement sendImage(image:)
+		return false
+	}
+
+	fun sendImage(image: Bitmap, recipient: String): Boolean {
+		// TODO: Implement sendImage(image:, recipient:)
+		return false
+	}
+
+	/**
+	 * Sends the user's current location to the channel
+	 *
+	 * When the user's location is found, `continuation` is also called with the location so you can
+	 * update your app to reflect the location they are reporting to the channel.
+	 *
+	 * @param continuation Called after the current location is found and reverse geocoding is performed.
+	 * If the location was found, it reports the location as well as a reverse geocoded description
+	 * if available. If an error was encountered acquiring the location, it reports the error.
+	 */
+	// TODO: Define error type for location messages
+	fun sendLocation(continuation: SentLocationCallback?) {
+		// TODO: Implement sendLocation(continuation:)
+	}
+
+	fun sendLocation(recipient: String, continuation: SentLocationCallback?) {
+		// TODO: Implement sendLocation(recipient:, continuation:)
+	}
+
     /**
      * Start an outgoing voice message.
      * Must be called on the main UI thread.
@@ -156,7 +235,20 @@ class Session internal constructor(
         return voiceManager.startVoiceOut(this, sessionListener, transport)
     }
 
-    /**
+	/**
+	 * Start an outgoing voice message.
+	 * Must be called on the main UI thread.
+	 *
+	 * @param recipient The username for the user to send the message to. Other users in the channel
+	 * won't receive the message.
+	 * @return A non-null voice stream object if a message was successfully started.
+	 */
+	fun startVoiceMessage(recipient: String): OutgoingVoiceStream? {
+		// TODO: Implement startVoiceMessage(username:)
+		return null
+	}
+
+	/**
      * Creates and starts a voice stream to the server using a custom voice source instead of the
      * device microphone.
      * Must be called on the main UI thread.
@@ -170,7 +262,22 @@ class Session internal constructor(
         return voiceManager.startVoiceOut(this, sessionListener, transport, sourceConfig)
     }
 
-    private fun performConnect(): Boolean {
+	/**
+	 * Creates and starts a voice stream to the server using a custom voice source instead of the
+	 * device microphone.
+	 * Must be called on the main UI thread.
+	 *
+	 * @param recipient The username for the user to send the message to. Other users in the channel
+	 * won't receive the message.
+	 * @param sourceConfig specifies the voice source object for the message
+	 * @return the stream that will be handling the voice message
+	 */
+	fun startVoiceMessage(recipient: String, sourceConfig: OutgoingVoiceConfiguration): OutgoingVoiceStream? {
+		// TODO: Implement startVoiceMessage(username:, sourceConfig:)
+		return null
+	}
+
+	private fun performConnect(): Boolean {
         val address = this.address
         if (transport != null) return false
         val transport = TransportWebSockets()
