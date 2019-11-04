@@ -14,6 +14,8 @@ import com.zello.channel.sdk.platform.Encoder
 import com.zello.channel.sdk.platform.EncoderOpus
 import com.zello.channel.sdk.platform.PlayerSpeaker
 import com.zello.channel.sdk.platform.RecorderMicrophone
+import com.zello.channel.sdk.transport.TransportFactory
+import com.zello.channel.sdk.transport.WebSocketsTransportFactory
 
 /**
  * Android-specific session context implementation.
@@ -23,6 +25,23 @@ internal class SessionContextAndroid(context: Context) : SessionContext {
 	private val context: Context = context.applicationContext
 	private var logger: SessionLogger = SessionLoggerNull()
 	private var handler: Handler = Handler()
+
+	override val transportFactory: TransportFactory = WebSocketsTransportFactory()
+
+	override fun loadNativeLibraries(logger: SessionLogger?): Boolean {
+		return loadLib("opus", logger) && loadLib("util", logger)
+	}
+
+	private fun loadLib(name: String, logger: SessionLogger?): Boolean {
+		try {
+			System.loadLibrary("embeddable.zello.sdk.$name")
+			return true
+		} catch (t: Throwable) {
+			logger?.logError("Failed to load $name module", t)
+		}
+
+		return false
+	}
 
 	override fun createAudioSource(configuration: OutgoingVoiceConfiguration?, audioEventHandler: AudioSourceEvents, stream: OutgoingVoiceStream): AudioSource {
 		if (configuration == null) {

@@ -41,9 +41,9 @@ internal class VoiceManager(private val context: SessionContext) {
 	 * Start an outgoing voice message.
 	 * Must be called on the main UI thread.
 	 */
-	internal fun startVoiceOut(session: Session, events: SessionListener?, transport: Transport, voiceConfiguration: OutgoingVoiceConfiguration? = null): OutgoingVoiceStream? {
+	internal fun startVoiceOut(session: Session, events: SessionListener?, transport: Transport, recipient: String? = null, voiceConfiguration: OutgoingVoiceConfiguration? = null): OutgoingVoiceStream? {
 		if (activeOutgoing != null) return null
-		val out = object : OutgoingVoiceStream(session, events, context, transport, voiceConfiguration) {
+		val out = object : OutgoingVoiceStream(session, events, context, transport, recipient = recipient, configuration = voiceConfiguration) {
 			override fun onStateChanged(state: VoiceStreamState) {
 				if (activeOutgoing != this) return
 				events?.onOutgoingVoiceStateChanged(session, this)

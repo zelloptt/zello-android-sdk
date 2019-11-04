@@ -9,7 +9,8 @@ internal abstract class CommandStartVoiceStream(
 		transport: Transport,
 		private val codec: String?,
 		private val codecHeader: ByteArray?,
-		private val packetDuration: Int) : Command(transport, true) {
+		private val packetDuration: Int,
+		private val recipient: String?) : Command(transport, true) {
 
 	abstract fun onSuccess(streamId: Int)
 
@@ -49,6 +50,9 @@ internal abstract class CommandStartVoiceStream(
 		json.put(Command.keyCodec, codec)
 		json.put(Command.keyCodecHeader, Utils.encodeBase64(codecHeader))
 		json.put(Command.keyPacketDuration, packetDuration)
+		if (recipient != null) {
+			json.put(Command.keyRecipient, recipient)
+		}
 		return json
 	}
 

@@ -8,7 +8,6 @@ import com.zello.channel.sdk.platform.Utils
 import com.zello.channel.sdk.transport.Transport
 import com.zello.channel.sdk.transport.TransportEvents
 import com.zello.channel.sdk.transport.TransportReadAck
-import com.zello.channel.sdk.transport.TransportWebSockets
 import org.json.JSONObject
 import java.util.EnumSet
 
@@ -68,7 +67,7 @@ class Session internal constructor(
         private set
 
     init {
-        initialize(context.getLogger())
+        initialized = context.loadNativeLibraries(context.getLogger())
         if (!initialized) state = SessionState.ERROR
     }
 
@@ -244,8 +243,9 @@ class Session internal constructor(
 	 * @return A non-null voice stream object if a message was successfully started.
 	 */
 	fun startVoiceMessage(recipient: String): OutgoingVoiceStream? {
-		// TODO: Implement startVoiceMessage(username:)
-		return null
+		if (!initialized) return null
+		val transport = transport ?: return null
+		return voiceManager.startVoiceOut(this, sessionListener, transport, recipient = recipient)
 	}
 
 	/**
@@ -259,7 +259,7 @@ class Session internal constructor(
     fun startVoiceMessage(sourceConfig: OutgoingVoiceConfiguration): OutgoingVoiceStream? {
         if (!initialized) return null
         val transport = transport ?: return null
-        return voiceManager.startVoiceOut(this, sessionListener, transport, sourceConfig)
+        return voiceManager.startVoiceOut(this, sessionListener, transport, voiceConfiguration = sourceConfig)
     }
 
 	/**
@@ -273,14 +273,15 @@ class Session internal constructor(
 	 * @return the stream that will be handling the voice message
 	 */
 	fun startVoiceMessage(recipient: String, sourceConfig: OutgoingVoiceConfiguration): OutgoingVoiceStream? {
-		// TODO: Implement startVoiceMessage(username:, sourceConfig:)
-		return null
+		if (!initialized) return null
+		val transport = transport ?: return null
+		return voiceManager.startVoiceOut(this, sessionListener, transport, recipient = recipient, voiceConfiguration = sourceConfig)
 	}
 
 	private fun performConnect(): Boolean {
         val address = this.address
         if (transport != null) return false
-        val transport = TransportWebSockets()
+        val transport = context.transportFactory.instantiate()
         return try {
             transport.connect(object : TransportEvents {
                 override fun onConnectSucceeded() {
@@ -467,31 +468,7 @@ class Session internal constructor(
     }
 
     private companion object {
-
-        /**
-         * Initialize the SDK.
-         * Loads the necessary native libraries.
-         * @return True if the libraries were successfully loaded.
-         */
-        private fun initialize(logger: SessionLogger?) {
-            if (!initialized) {
-                initialized = loadLib("opus", logger) && loadLib("util", logger)
-            }
-        }
-
-        private fun loadLib(name: String, logger: SessionLogger?): Boolean {
-            try {
-                System.loadLibrary("embeddable.zello.sdk.$name")
-                return true
-            } catch (t: Throwable) {
-                logger?.logError("Failed to load $name module", t)
-            }
-
-            return false
-        }
-
         private var initialized: Boolean = false
-
     }
 
 }

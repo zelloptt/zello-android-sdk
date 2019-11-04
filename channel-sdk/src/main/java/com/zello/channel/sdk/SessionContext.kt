@@ -6,6 +6,7 @@ import com.zello.channel.sdk.platform.AudioSource
 import com.zello.channel.sdk.platform.AudioSourceEvents
 import com.zello.channel.sdk.platform.Decoder
 import com.zello.channel.sdk.platform.Encoder
+import com.zello.channel.sdk.transport.TransportFactory
 
 /**
  * Platform-specific context.
@@ -13,6 +14,10 @@ import com.zello.channel.sdk.platform.Encoder
  * Implements a minimum set of calls necessary for an instance of [Session] to work.
  */
 internal interface SessionContext {
+
+	val transportFactory: TransportFactory
+
+	fun loadNativeLibraries(logger: SessionLogger?): Boolean
 
 	fun setLogger(logger: SessionLogger?)
 
