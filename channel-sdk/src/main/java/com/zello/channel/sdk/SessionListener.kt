@@ -55,6 +55,14 @@ interface SessionListener {
 	fun onSessionWillReconnect(session: Session, reason: ReconnectReason): Boolean = true
 
 	/**
+	 * Called when the channel's status changes. The listener can read channel properties from the
+	 * Session object.
+	 *
+	 * @param session the session wrapping the channel whose status has changed
+	 */
+	fun onChannelStatusUpdate(session: Session) { }
+
+	/**
 	 * Called if an outgoing stream closes with an error
 	 *
 	 * @param session the session containing the stream

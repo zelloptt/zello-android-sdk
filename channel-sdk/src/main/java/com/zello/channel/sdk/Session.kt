@@ -68,6 +68,18 @@ class Session internal constructor(
     var state: SessionState = SessionState.DISCONNECTED
         private set
 
+	/**
+	 * Features supported by the currently connected channel
+	 */
+	var channelFeatures: EnumSet<ChannelFeature> = EnumSet.noneOf(ChannelFeature::class.java)
+		private set
+
+	/**
+	 * The number of users that are connected to the channel
+	 */
+	var channelUsersOnline: Int = 0
+		private set
+
     init {
 		if (!loadedNativeLibraries) {
 			loadedNativeLibraries = context.loadNativeLibraries(context.getLogger())
@@ -148,17 +160,6 @@ class Session internal constructor(
             sessionListener?.onDisconnected(this)
         }
     }
-
-	// TODO: Make sure this is still easily usable from Java
-	enum class ChannelFeature {
-		ImageMessages,
-		TextMessages,
-		LocationMessages
-	}
-
-	var channelFeatures: EnumSet<ChannelFeature> = EnumSet.noneOf(ChannelFeature::class.java)
-		private set
-
 
 
 	/// NEW API
@@ -322,7 +323,9 @@ class Session internal constructor(
     private fun performDisconnect(): Boolean {
         val transport = transport
         state = SessionState.DISCONNECTED
-        this.transport = null
+		channelFeatures = EnumSet.noneOf(ChannelFeature::class.java)
+		channelUsersOnline = 0
+		this.transport = null
         voiceManager.reset()
         if (transport == null) return false
         commandLogon?.close()
@@ -425,8 +428,29 @@ class Session internal constructor(
             Command.eventOnStreamStart -> startIncomingVoiceStream(json)
             Command.eventOnStreamStop  -> stopIncomingVoiceStream(json)
             Command.eventOnError -> handleServerError(json)
+			Command.eventOnChannelStatus -> handleChannelStatus(json)
         }
     }
+
+	private fun handleChannelStatus(json: JSONObject) {
+		val imagesSupported = json.optBoolean(Command.keyImagesSupported, false)
+		val textingSupported = json.optBoolean(Command.keyTextingSupported, false)
+		val locationsSupported = json.optBoolean(Command.keyLocationsSupported, false)
+		val features = EnumSet.noneOf(ChannelFeature::class.java)
+		if (imagesSupported) {
+			features.add(ChannelFeature.ImageMessages)
+		}
+		if (textingSupported) {
+			features.add(ChannelFeature.TextMessages)
+		}
+		if (locationsSupported) {
+			features.add(ChannelFeature.LocationMessages)
+		}
+		channelFeatures = features
+		channelUsersOnline = json.optInt(Command.keyUsersOnline, 0)
+
+		sessionListener?.onChannelStatusUpdate(this)
+	}
 
     private fun handleServerError(json: JSONObject) {
         val error = json.optString(Command.keyError) ?: return
