@@ -273,6 +273,13 @@ internal class TestSessionListener: SessionListener {
 
 	}
 
+	var receivedTextMessage: String? = null
+	var receivedTextMessageSender: String? = null
+	override fun onTextMessage(session: Session, sender: String, message: String) {
+		receivedTextMessageSender = sender
+		receivedTextMessage = message
+	}
+
 }
 
 internal class TestVoiceSource: VoiceSource {
@@ -297,6 +304,8 @@ class SessionTests {
 		session.sessionListener = sessionListener
 	}
 
+	//region *** Lifecycle
+
 	@Test
 	fun testConnect() {
 		val transport = sessionContext.transportFactory.transport
@@ -306,6 +315,10 @@ class SessionTests {
 		assertEquals("Connected to wrong address", "http://example.com/", transport.connectedAddress)
 		assertTrue("Session listener not informed of connect starting", sessionListener.connectedStartedCalled)
 	}
+
+	//endregion
+
+	//region *** Voice Messages
 
 	// Verify that the Session returns what the VoiceManager gives it
 	@Test
@@ -395,6 +408,8 @@ class SessionTests {
 		assertEquals("bogusRecipient", json.optString("for"))
 	}
 
+    //endregion
+
 	@Test
 	fun testChannelFeatures() {
 		assertTrue(session.connect())
@@ -482,4 +497,53 @@ class SessionTests {
 		listener.onIncomingCommand("on_channel_status", json, null)
 		assertTrue("Listener.onChannelStatusUpdate() not called", sessionListener.channelStatusUpdateCalled)
 	}
+
+	//region *** Text Messages
+
+	// Verify that sending a voice message to the channel sends the right command
+	@Test
+	fun testSendText_SendsCommand() {
+		assertTrue(session.connect())
+
+		session.sendText("test message")
+
+		assertEquals("Didn't send text message", "send_text_message", sessionContext.transportFactory.transport.sentCommand)
+		val json = sessionContext.transportFactory.transport.sentJson
+		assertNotNull(json)
+		if (json == null) { return }
+		assertEquals("Wrong text", "test message", json.optString("text"))
+		assertFalse("Recipient present", json.has("for"))
+	}
+
+	@Test
+	fun testSendTextToRecipient_SendsCommand() {
+		assertTrue(session.connect())
+
+		session.sendText("test message", recipient = "bogusRecipient")
+
+		assertEquals("Didn't send text message", "send_text_message", sessionContext.transportFactory.transport.sentCommand)
+		val json = sessionContext.transportFactory.transport.sentJson
+		assertNotNull(json)
+		if (json == null) { return }
+		assertEquals("Wrong text", "test message", json.optString("text"))
+		assertEquals("Wrong recipient", "bogusRecipient", json.optString("for"))
+	}
+
+	// Verify that we send received text messages to the session listener
+	@Test
+	fun testOnTextMessage_CallsListener() {
+		assertTrue(session.connect())
+
+		val json = JSONObject()
+		json.put("command", "on_text_message")
+		json.put("channel", "testChannel")
+		json.put("from", "bogusSender")
+		json.put("message_id", 234)
+		json.put("text", "example message")
+		sessionContext.transportFactory.transport.eventListener?.onIncomingCommand("on_text_message", json, null)
+		assertEquals("Wrong text message", "example message", sessionListener.receivedTextMessage)
+		assertEquals("Wrong text sender", "bogusSender", sessionListener.receivedTextMessageSender)
+	}
+
+	//endregion
 }

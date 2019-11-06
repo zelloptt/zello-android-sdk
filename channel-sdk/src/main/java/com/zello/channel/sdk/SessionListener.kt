@@ -144,4 +144,12 @@ interface SessionListener {
 	 */
 	fun onIncomingVoiceProgress(session: Session, stream: IncomingVoiceStream, positionMs: Int)
 
+	/**
+	 * This method is called when a text message is received from another user in the channel
+	 *
+	 * @param session the session that received a text message
+	 * @param sender the username of the user that sent the message
+	 * @param message the message that was received
+	 */
+	fun onTextMessage(session: Session, sender: String, message: String)
 }
