@@ -23,10 +23,7 @@ import org.junit.runner.RunWith
 internal class TestAudioSource: AudioSource {
 	override val level: Int = 0
 
-	override fun prepare(sampleRate: Int, bufferSampleCount: Int, levelMeter: Boolean, noiseSuppression: Boolean, useAGC: Boolean): Boolean {
-		// TODO: Implement prepare(sampleRate:, bufferSampleCount:, levelMeter:, noiseSuppression:, useAGC:)
-		return false
-	}
+	override fun prepare(sampleRate: Int, bufferSampleCount: Int, levelMeter: Boolean, noiseSuppression: Boolean, useAGC: Boolean): Boolean = false
 
 	override fun start() { }
 
@@ -328,7 +325,7 @@ class SessionTests {
 
 	@Test
 	fun testStartStreamToRecipient_SendsStartMessage() {
-		assertTrue(session.connect())
+		assertTrue("Session failed to connect", session.connect())
 
 		val stream = session.startVoiceMessage("bogusRecipient")
 		assertNotNull("Stream not created", stream)

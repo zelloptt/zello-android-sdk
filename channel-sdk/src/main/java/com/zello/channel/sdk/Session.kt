@@ -38,6 +38,8 @@ class Session internal constructor(
     @Suppress("MemberVisibilityCanBePrivate")
     var requestTimeoutSec: Long = 30
 
+	private val initialized: Boolean
+		get() = loadedNativeLibraries
     private val voiceManager = VoiceManager(context)
     private var transport: Transport? = null
     private var commandLogon: CommandLogon? = null
@@ -67,8 +69,10 @@ class Session internal constructor(
         private set
 
     init {
-        initialized = context.loadNativeLibraries(context.getLogger())
-        if (!initialized) state = SessionState.ERROR
+		if (!loadedNativeLibraries) {
+			loadedNativeLibraries = context.loadNativeLibraries(context.getLogger())
+		}
+        if (!loadedNativeLibraries) state = SessionState.ERROR
     }
 
     /**
@@ -468,7 +472,7 @@ class Session internal constructor(
     }
 
     private companion object {
-        private var initialized: Boolean = false
+        private var loadedNativeLibraries: Boolean = false
     }
 
 }
