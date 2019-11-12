@@ -14,7 +14,7 @@ import com.zello.channel.sdk.transport.Transport
  * to create a new stream.
  */
 abstract class OutgoingVoiceStream internal constructor(
-		session: Session, events: SessionListener?, context: SessionContext, private var transport: Transport, private val configuration: OutgoingVoiceConfiguration?) :
+		session: Session, events: SessionListener?, context: SessionContext, private var transport: Transport, private val recipient: String?, private val configuration: OutgoingVoiceConfiguration?) :
 		VoiceStream(session, events, context, 0) {
 
 	private var encoder: Encoder? = null
@@ -112,7 +112,7 @@ abstract class OutgoingVoiceStream internal constructor(
 		val encoder = encoder ?: return
 		state = VoiceStreamState.STARTING
 		onStateChanged(state)
-		val command = object : CommandStartVoiceStream(transport, encoder.name, encoder.header, encoder.packetDuration) {
+		val command = object : CommandStartVoiceStream(transport, encoder.name, encoder.header, encoder.packetDuration, recipient) {
 			override fun onSuccess(streamId: Int) {
 				if (state == VoiceStreamState.STOPPED) return
 				this@OutgoingVoiceStream.streamId = streamId

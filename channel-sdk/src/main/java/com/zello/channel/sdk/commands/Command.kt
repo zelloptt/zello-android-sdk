@@ -64,6 +64,7 @@ internal abstract class Command protected constructor(transport: Transport, priv
 		val keyCodec = "codec"
 		val keyCodecHeader = "codec_header"
 		val keyPacketDuration = "packet_duration"
+		val keyRecipient = "for"
 		val keyStreamId = "stream_id"
 		// TODO: Remove streamId key after server is fixed
 		// There's a server bug where the server sends streamId instead of stream_id in on_stream_stop events
