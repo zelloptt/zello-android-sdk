@@ -80,6 +80,11 @@ internal abstract class Command protected constructor(transport: Transport, priv
 		val keyImagesSupported = "images_supported"
 		val keyTextingSupported = "texting_supported"
 		val keyLocationsSupported = "locations_supported"
+		val keyThumbnailLength = "thumbnail_content_length"
+		val keyImageLength = "content_length"
+		val keyImageWidth = "width"
+		val keyImageHeight = "height"
+		val keyImageId = "image_id"
 		val keyTextMessageBody = "text"
 
 		val valAudio = "audio"
@@ -106,6 +111,7 @@ internal abstract class Command protected constructor(transport: Transport, priv
 		val commandLogon = "logon"
 		val commandStartStream = "start_stream"
 		val commandStopStream = "stop_stream"
+		val commandSendImage = "send_image"
 		val commandSendTextMessage = "send_text_message"
 
 		val eventOnChannelStatus = "on_channel_status"

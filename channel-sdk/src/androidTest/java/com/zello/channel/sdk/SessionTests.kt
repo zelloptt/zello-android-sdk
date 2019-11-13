@@ -1,6 +1,9 @@
 package com.zello.channel.sdk
 
+import android.graphics.Bitmap
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.zello.channel.sdk.image.ImageMessageManager
+import com.zello.channel.sdk.image.TestImageUtils
 import com.zello.channel.sdk.platform.AudioReceiver
 import com.zello.channel.sdk.platform.AudioReceiverEvents
 import com.zello.channel.sdk.platform.AudioSource
@@ -19,6 +22,8 @@ import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+
+//region Mocks
 
 internal class TestAudioSource: AudioSource {
 	override val level: Int = 0
@@ -155,34 +160,6 @@ internal class TestDecoder: Decoder {
 	override fun onPlaybackInitError() { }
 }
 
-internal class TestTransport: Transport {
-	var connectCalled: Boolean = false
-		private set
-	var connectedAddress: String? = null
-		private set
-	var sentCommand: String? = null
-		private set
-	var sentJson: JSONObject? = null
-		private set
-	var eventListener: TransportEvents? = null
-
-	@Throws(SessionConnectErrorException::class)
-	override fun connect(events: TransportEvents, address: String, requestTimeoutSec: Long) {
-		eventListener = events
-		connectedAddress = address
-		connectCalled = true
-	}
-
-	override fun disconnect() { }
-
-	override fun send(command: String, json: JSONObject, ack: TransportSendAck?) {
-		sentCommand = command
-		sentJson = json
-	}
-
-	override fun sendVoiceStreamData(streamId: Int, data: ByteArray) { }
-}
-
 internal class TestTransportFactory: TransportFactory {
 	val transport = TestTransport()
 
@@ -191,8 +168,20 @@ internal class TestTransportFactory: TransportFactory {
 	}
 }
 
+internal class TestImageMessageManager: ImageMessageManager {
+	var sentImage: Bitmap? = null
+		private set
+	var recipient: String? = null
+	override fun sendImage(image: Bitmap, transport: Transport, recipient: String?, continuation: SentImageCallback?) {
+		this.recipient = recipient
+		sentImage = image
+	}
+}
+
 internal class TestSessionContext: SessionContext {
 	override val transportFactory: TestTransportFactory = TestTransportFactory()
+	override val imageMessageManager: TestImageMessageManager = TestImageMessageManager()
+
 	val encoder: TestEncoder = TestEncoder()
 
 	override fun setLogger(logger: SessionLogger?) { }
@@ -287,6 +276,8 @@ internal class TestVoiceSource: VoiceSource {
 
 	override fun stopProvidingAudio(sink: VoiceSink) { }
 }
+
+//endregion Mocks
 
 @RunWith(AndroidJUnit4::class)
 class SessionTests {
@@ -543,6 +534,30 @@ class SessionTests {
 		sessionContext.transportFactory.transport.eventListener?.onIncomingCommand("on_text_message", json, null)
 		assertEquals("Wrong text message", "example message", sessionListener.receivedTextMessage)
 		assertEquals("Wrong text sender", "bogusSender", sessionListener.receivedTextMessageSender)
+	}
+
+	//endregion
+
+	//region Image Messages
+
+	@Test
+	fun testSendImageMessage_CallsImageMessageManager() {
+		assertTrue(session.connect())
+
+		val image = TestImageUtils.createRedBitmap(500, 400)
+		session.sendImage(image, null)
+		assertNull(sessionContext.imageMessageManager.recipient)
+		assertEquals(image, sessionContext.imageMessageManager.sentImage)
+	}
+
+	@Test
+	fun testSendImageMessageToRecipient_CallsImageMessageManager() {
+		assertTrue(session.connect())
+
+		val image = TestImageUtils.createRedBitmap(500, 400)
+		session.sendImage(image, "bogusRecipient", null)
+		assertEquals("Wrong or missing recipient", "bogusRecipient", sessionContext.imageMessageManager.recipient)
+		assertEquals("Wrong or missing image", image, sessionContext.imageMessageManager.sentImage)
 	}
 
 	//endregion

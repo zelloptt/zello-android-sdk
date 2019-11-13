@@ -2,6 +2,8 @@ package com.zello.channel.sdk
 
 import android.content.Context
 import android.os.Handler
+import com.zello.channel.sdk.image.ImageMessageManager
+import com.zello.channel.sdk.image.ImageMessageManagerImpl
 import com.zello.channel.sdk.platform.AudioReceiver
 import com.zello.channel.sdk.platform.AudioReceiverEvents
 import com.zello.channel.sdk.platform.AudioSource
@@ -27,6 +29,7 @@ internal class SessionContextAndroid(context: Context) : SessionContext {
 	private var handler: Handler = Handler()
 
 	override val transportFactory: TransportFactory = WebSocketsTransportFactory()
+	override val imageMessageManager: ImageMessageManager = ImageMessageManagerImpl()
 
 	override fun loadNativeLibraries(logger: SessionLogger?): Boolean {
 		return loadLib("opus", logger) && loadLib("util", logger)
