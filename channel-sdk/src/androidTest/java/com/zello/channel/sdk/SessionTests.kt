@@ -158,13 +158,17 @@ internal class TestDecoder: Decoder {
 internal class TestTransport: Transport {
 	var connectCalled: Boolean = false
 		private set
-
 	var connectedAddress: String? = null
+		private set
 	var sentCommand: String? = null
+		private set
 	var sentJson: JSONObject? = null
+		private set
+	var eventListener: TransportEvents? = null
 
 	@Throws(SessionConnectErrorException::class)
 	override fun connect(events: TransportEvents, address: String, requestTimeoutSec: Long) {
+		eventListener = events
 		connectedAddress = address
 		connectCalled = true
 	}
@@ -238,6 +242,11 @@ internal class TestSessionListener: SessionListener {
 
 	override fun onDisconnected(session: Session) {
 
+	}
+
+	var channelStatusUpdateCalled: Boolean = false
+	override fun onChannelStatusUpdate(session: Session) {
+		channelStatusUpdateCalled = true
 	}
 
 	override fun onOutgoingVoiceError(session: Session, stream: OutgoingVoiceStream, error: OutgoingVoiceStreamError) {
@@ -384,5 +393,93 @@ class SessionTests {
 		assertEquals("", json.optString("codec_header"))
 		assertEquals(10, json.getInt("packet_duration"))
 		assertEquals("bogusRecipient", json.optString("for"))
+	}
+
+	@Test
+	fun testChannelFeatures() {
+		assertTrue(session.connect())
+
+		val listener = sessionContext.transportFactory.transport.eventListener
+		assertNotNull(listener)
+		if (listener == null) { return }
+
+		val json = JSONObject()
+		json.put("command", "on_channel_status")
+		listener.onIncomingCommand("on_channel_status", json, null)
+		assertFalse("images_supported present", session.channelFeatures.contains(ChannelFeature.ImageMessages))
+		assertFalse("texting_supported present", session.channelFeatures.contains(ChannelFeature.TextMessages))
+		assertFalse("locations_supported present", session.channelFeatures.contains(ChannelFeature.LocationMessages))
+
+		json.put("images_supported", true)
+		listener.onIncomingCommand("on_channel_status", json, null)
+		assertTrue("images_supported missing", session.channelFeatures.contains(ChannelFeature.ImageMessages))
+		assertFalse("texting_supported present", session.channelFeatures.contains(ChannelFeature.TextMessages))
+		assertFalse("locations_supported present", session.channelFeatures.contains(ChannelFeature.LocationMessages))
+
+		json.put("images_supported", false)
+		json.put("texting_supported", true)
+		listener.onIncomingCommand("on_channel_status", json, null)
+		assertFalse("images_supported present", session.channelFeatures.contains(ChannelFeature.ImageMessages))
+		assertTrue("texting_supported missing", session.channelFeatures.contains(ChannelFeature.TextMessages))
+		assertFalse("locations_supported present", session.channelFeatures.contains(ChannelFeature.LocationMessages))
+
+		json.put("texting_supported", false)
+		json.put("locations_supported", true)
+		listener.onIncomingCommand("on_channel_status", json, null)
+		assertFalse("images_supported present", session.channelFeatures.contains(ChannelFeature.ImageMessages))
+		assertFalse("texting_supported present", session.channelFeatures.contains(ChannelFeature.TextMessages))
+		assertTrue("locations_supported missing", session.channelFeatures.contains(ChannelFeature.LocationMessages))
+	}
+
+	@Test
+	fun testChannelFeatures_ResetAfterDisconnect() {
+		assertTrue(session.connect())
+
+		val listener = sessionContext.transportFactory.transport.eventListener
+		assertNotNull(listener)
+		if (listener == null) { return }
+
+		val json = JSONObject()
+		json.put("command", "on_channel_status")
+		json.put("texting_supported", true)
+		listener.onIncomingCommand("on_channel_status", json, null)
+		assertTrue("texting_supported missing", session.channelFeatures.contains(ChannelFeature.TextMessages))
+
+		listener.onDisconnected()
+		assertFalse("Features not reset after disconnect", session.channelFeatures.contains(ChannelFeature.TextMessages))
+	}
+
+	@Test
+	fun testChannelUsersOnline() {
+		assertTrue(session.connect())
+
+		val listener = sessionContext.transportFactory.transport.eventListener
+		assertNotNull(listener)
+		if (listener == null) { return }
+
+		val json = JSONObject()
+		json.put("command", "on_channel_status")
+		json.put("users_online", 10)
+		listener.onIncomingCommand("on_channel_status", json, null)
+		assertEquals(10, session.channelUsersOnline)
+
+		listener.onDisconnected()
+		assertEquals(0, session.channelUsersOnline)
+	}
+
+	// Verify that the Session's listener is informed when the channel status is updated
+	@Test
+	fun testChannelStatusUpdate_CallsListener() {
+		assertTrue(session.connect())
+
+		val listener = sessionContext.transportFactory.transport.eventListener
+		assertNotNull(listener)
+		if (listener == null) { return }
+
+		val json = JSONObject()
+		json.put("command", "on_channel_status")
+		assertFalse(sessionListener.channelStatusUpdateCalled)
+		listener.onIncomingCommand("on_channel_status", json, null)
+		assertTrue("Listener.onChannelStatusUpdate() not called", sessionListener.channelStatusUpdateCalled)
 	}
 }

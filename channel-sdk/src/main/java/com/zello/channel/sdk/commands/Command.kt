@@ -76,6 +76,10 @@ internal abstract class Command protected constructor(transport: Transport, priv
 		val keyPassword = "password"
 		val keyChannel = "channel"
 		val keyFrom = "from"
+		val keyUsersOnline = "users_online"
+		val keyImagesSupported = "images_supported"
+		val keyTextingSupported = "texting_supported"
+		val keyLocationsSupported = "locations_supported"
 
 		val valAudio = "audio"
 
