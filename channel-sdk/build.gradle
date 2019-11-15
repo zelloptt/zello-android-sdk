@@ -2,6 +2,7 @@ apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
 apply plugin: 'kotlin-android-extensions'
 apply plugin: 'org.jetbrains.dokka'
+apply plugin: 'maven-publish'
 
 android {
 	compileSdkVersion 27
@@ -48,6 +49,32 @@ android {
 		packageOptions {
 			prefix = "com.zello.channel.sdk.platform"
 			suppress = true
+		}
+	}
+
+	// TODO: Update for correct publishing to public Maven repository for final product
+	publishing {
+		publications {
+			channelsSdk(MavenPublication) {
+				groupId 'com.zello'
+				artifactId 'zello-channel-sdk'
+				version '0.5.0'
+				artifact "$buildDir/outputs/aar/debug/zello-${archivesBaseName}.aar"
+
+				pom.withXml {
+					def dependenciesNode = asNode().appendNode('dependencies')
+					configurations.compile.allDependencies.each { dependency ->
+						def dependencyNode = dependenciesNode.appendNode('dependency')
+						dependencyNode.appendNode('groupId', dependency.group)
+						dependencyNode.appendNode('artifactId', dependency.name)
+						dependencyNode.appendNode('version', dependency.version)
+					}
+				}
+			}
+		}
+
+		repositories {
+			mavenLocal()
 		}
 	}
 }
