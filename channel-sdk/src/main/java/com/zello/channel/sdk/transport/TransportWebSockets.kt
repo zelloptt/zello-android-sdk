@@ -17,7 +17,7 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.concurrent.TimeUnit
 
-internal class TransportWebSockets : Transport, WebSocketListener() {
+internal class TransportWebSockets(private val httpClientFactory: HttpClientFactory = HttpClientFactoryImpl()) : Transport, WebSocketListener() {
 
 	private var events: TransportEvents? = null
 	private var handler: Handler? = null
@@ -49,7 +49,7 @@ internal class TransportWebSockets : Transport, WebSocketListener() {
 		val socket: WebSocket
 		val client: OkHttpClient
 		try {
-			client = OkHttpClient.Builder().connectTimeout(requestTimeoutSec, TimeUnit.SECONDS).writeTimeout(requestTimeoutSec, TimeUnit.SECONDS).readTimeout(requestTimeoutSec, TimeUnit.SECONDS).pingInterval(WS_PING_INTERVAL_SEC, TimeUnit.SECONDS).build()
+			client = httpClientFactory.client(requestTimeoutSec, WS_PING_INTERVAL_SEC)
 			val request = Request.Builder().url(address).build()
 			socket = client.newWebSocket(request, this)
 		} catch (e: IllegalStateException) {
@@ -103,6 +103,16 @@ internal class TransportWebSockets : Transport, WebSocketListener() {
 		hton.putInt(0)
 		System.arraycopy(data, 0, buffer, 9, data.size)
 		// Sadly, there's no way to pass a byte[] to a new or existing okio ByteString without copying the data
+		socket?.send(ByteString.of(buffer, 0, buffer.size))
+	}
+
+	override fun sendImageData(imageId: Int, tag: Int, data: ByteArray) {
+		val buffer = ByteArray(9 + data.size)
+		val hton = ByteBuffer.wrap(buffer, 0, 9).order(ByteOrder.BIG_ENDIAN)
+		hton.put(PACKET_TYPE_IMAGE)
+		hton.putInt(imageId)
+		hton.putInt(tag)
+		System.arraycopy(data, 0, buffer, 9, data.size)
 		socket?.send(ByteString.of(buffer, 0, buffer.size))
 	}
 
@@ -277,6 +287,7 @@ internal class TransportWebSockets : Transport, WebSocketListener() {
 		private const val WS_PING_INTERVAL_SEC = 230L
 
 		private const val PACKET_TYPE_STREAM: Byte = 1
+		private const val PACKET_TYPE_IMAGE: Byte = 2
 	}
 
 	/**

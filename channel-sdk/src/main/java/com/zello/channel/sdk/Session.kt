@@ -203,14 +203,16 @@ class Session internal constructor(
 	 * @return `true` if the image metadata was sent successfully. `false` if an error was encountered
 	 * before the image metadata could be sent.
 	 */
-	fun sendImage(image: Bitmap): Boolean {
-		// TODO: Implement sendImage(image:)
-		return false
+	fun sendImage(image: Bitmap, continuation: SentImageCallback?) {
+		if (!initialized) return
+		val transport = transport ?: return
+		context.imageMessageManager.sendImage(image, transport, continuation = continuation)
 	}
 
-	fun sendImage(image: Bitmap, recipient: String): Boolean {
-		// TODO: Implement sendImage(image:, recipient:)
-		return false
+	fun sendImage(image: Bitmap, recipient: String, continuation: SentImageCallback?) {
+		if (!initialized) return
+		val transport = transport ?: return
+		context.imageMessageManager.sendImage(image, transport, recipient = recipient, continuation = continuation)
 	}
 
 	/**
