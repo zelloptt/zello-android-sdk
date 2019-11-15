@@ -2,7 +2,10 @@ package com.zello.channel.sdk
 
 import android.graphics.Bitmap
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.zello.channel.sdk.image.Dimensions
 import com.zello.channel.sdk.image.ImageMessageManager
+import com.zello.channel.sdk.image.ImageMessageManagerListener
+import com.zello.channel.sdk.image.ImageTag
 import com.zello.channel.sdk.image.TestImageUtils
 import com.zello.channel.sdk.platform.AudioReceiver
 import com.zello.channel.sdk.platform.AudioReceiverEvents
@@ -13,6 +16,7 @@ import com.zello.channel.sdk.platform.DecoderListener
 import com.zello.channel.sdk.platform.Encoder
 import com.zello.channel.sdk.platform.EncoderListener
 import com.zello.channel.sdk.platform.PlayerListener
+import com.zello.channel.sdk.platform.hexString
 import com.zello.channel.sdk.transport.Transport
 import com.zello.channel.sdk.transport.TransportEvents
 import com.zello.channel.sdk.transport.TransportFactory
@@ -22,6 +26,8 @@ import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.io.ByteArrayOutputStream
+import java.util.Arrays
 
 //region Mocks
 
@@ -169,6 +175,7 @@ internal class TestTransportFactory: TransportFactory {
 }
 
 internal class TestImageMessageManager: ImageMessageManager {
+	var listener: ImageMessageManagerListener? = null
 	var sentImage: Bitmap? = null
 		private set
 	var recipient: String? = null
@@ -176,11 +183,28 @@ internal class TestImageMessageManager: ImageMessageManager {
 		this.recipient = recipient
 		sentImage = image
 	}
+
+	var receivedImageId: Int? = null
+	var receivedImageSender: String? = null
+	var receivedDimensions: Dimensions? = null
+	override fun onImageHeader(imageId: Int, sender: String, dimensions: Dimensions) {
+		receivedImageId = imageId
+		receivedImageSender = sender
+		receivedDimensions = dimensions
+	}
+
+	var receivedImageType: Int? = null
+	var receivedImageData: ByteArray? = null
+	override fun onImageData(imageId: Int, type: Int, data: ByteArray) {
+		receivedImageId = imageId
+		receivedImageType = type
+		receivedImageData = data
+	}
 }
 
 internal class TestSessionContext: SessionContext {
 	override val transportFactory: TestTransportFactory = TestTransportFactory()
-	override val imageMessageManager: TestImageMessageManager = TestImageMessageManager()
+	val imageMessageManager: TestImageMessageManager = TestImageMessageManager()
 
 	val encoder: TestEncoder = TestEncoder()
 
@@ -189,6 +213,11 @@ internal class TestSessionContext: SessionContext {
 	override fun getLogger(): SessionLogger = SessionLogger.NONE
 
 	override fun loadNativeLibraries(logger: SessionLogger?): Boolean = true
+
+	override fun createImageMessageManager(listener: ImageMessageManagerListener): ImageMessageManager {
+		imageMessageManager.listener = listener
+		return imageMessageManager
+	}
 
 	override fun createAudioSource(configuration: OutgoingVoiceConfiguration?, audioEventHandler: AudioSourceEvents, stream: OutgoingVoiceStream): AudioSource {
 		return TestAudioSource()
@@ -269,6 +298,11 @@ internal class TestSessionListener: SessionListener {
 		receivedTextMessage = message
 	}
 
+	var receivedImageMessage: ImageInfo? = null
+	override fun onImageMessage(session: Session, imageInfo: ImageInfo) {
+		receivedImageMessage = imageInfo
+	}
+
 }
 
 internal class TestVoiceSource: VoiceSource {
@@ -295,7 +329,7 @@ class SessionTests {
 		session.sessionListener = sessionListener
 	}
 
-	//region *** Lifecycle
+	//region Lifecycle
 
 	@Test
 	fun testConnect() {
@@ -309,7 +343,7 @@ class SessionTests {
 
 	//endregion
 
-	//region *** Voice Messages
+	//region Voice Messages
 
 	// Verify that the Session returns what the VoiceManager gives it
 	@Test
@@ -401,6 +435,8 @@ class SessionTests {
 
     //endregion
 
+	//region Channel Features
+
 	@Test
 	fun testChannelFeatures() {
 		assertTrue(session.connect())
@@ -489,7 +525,9 @@ class SessionTests {
 		assertTrue("Listener.onChannelStatusUpdate() not called", sessionListener.channelStatusUpdateCalled)
 	}
 
-	//region *** Text Messages
+	//endregion
+
+	//region Text Messages
 
 	// Verify that sending a voice message to the channel sends the right command
 	@Test
@@ -558,6 +596,76 @@ class SessionTests {
 		session.sendImage(image, "bogusRecipient", null)
 		assertEquals("Wrong or missing recipient", "bogusRecipient", sessionContext.imageMessageManager.recipient)
 		assertEquals("Wrong or missing image", image, sessionContext.imageMessageManager.sentImage)
+	}
+
+	@Test
+	fun testOnImageMessageHeader_CallsImageMessageManager() {
+		assertTrue(session.connect())
+
+		val json = JSONObject()
+		json.put("command", "on_image")
+		json.put("channel", "testChannel")
+		json.put("from", "bogusSender")
+		json.put("message_id", 345)
+		json.put("type", "jpeg")
+		json.put("height", 300)
+		json.put("width", 500)
+
+		sessionContext.transportFactory.transport.eventListener?.onIncomingCommand("on_image", json, null)
+		assertEquals("Didn't call image message manager", 345, sessionContext.imageMessageManager.receivedImageId)
+		assertEquals("Didn't pass sender to image message manager", "bogusSender", sessionContext.imageMessageManager.receivedImageSender)
+		assertEquals("Didn't pass dimensions to image message manager", Dimensions(500, 300), sessionContext.imageMessageManager.receivedDimensions)
+	}
+
+	// TODO: Verify behavior for invalid image message headers
+
+	// Verify image data is forwarded to ImageMessageManager
+	@Test
+	fun testOnImageMessageData_CallsImageMessageManager() {
+		assertTrue(session.connect())
+
+		val thumbnailBytes = ByteArrayOutputStream()
+		val thumbnail = TestImageUtils.createRedBitmap(90, 90)
+		thumbnail.compress(Bitmap.CompressFormat.JPEG, 90, thumbnailBytes)
+		sessionContext.transportFactory.transport.eventListener?.onIncomingImageData(2345, 2, thumbnailBytes.toByteArray())
+		assertEquals("Didn't call image message manager.", 2345, sessionContext.imageMessageManager.receivedImageId)
+		assertEquals("Wrong image type.", ImageTag.THUMBNAIL.imageType, sessionContext.imageMessageManager.receivedImageType)
+		assertTrue("Wrong image data. Expected <${thumbnailBytes.toByteArray().hexString}> but was <${sessionContext.imageMessageManager.receivedImageData?.hexString}>", Arrays.equals(thumbnailBytes.toByteArray(), sessionContext.imageMessageManager.receivedImageData))
+	}
+
+	// Verify forwarding image messages from ImageMessageManager to SessionListener
+	@Test
+	fun testOnImageMessageFromManager_CallsListener() {
+		assertTrue("Session failed to connect", session.connect())
+
+		val imageListener = sessionContext.imageMessageManager.listener
+		assertNotNull("ImageMessageManagerListener not set", imageListener)
+		if (imageListener == null) { return }
+
+		val thumbnail = TestImageUtils.createRedBitmap(90, 90)
+		val imageInfo = ImageInfo(1234, "bogusSender", thumbnail, null)
+		imageListener.onImageMessage(imageInfo)
+
+		val received = sessionListener.receivedImageMessage
+		assertNotNull("Listener not called", received)
+		if (received == null) { return }
+		assertEquals("Wrong image id.", received.imageId, 1234)
+		assertEquals("Wrong sender.", received.sender, "bogusSender")
+		assertEquals("Wrong or missing thumbnail.", thumbnail, received.thumbnail)
+		assertNull("Unexpected image present.", received.image)
+
+		sessionListener.receivedImageMessage = null
+		val fullSized = TestImageUtils.createRedBitmap(500, 500)
+		val secondImage = ImageInfo(1234, "bogusSender", thumbnail, fullSized)
+		imageListener.onImageMessage(secondImage)
+
+		val second = sessionListener.receivedImageMessage
+		assertNotNull("Listener not called", second)
+		if (second == null) { return }
+		assertEquals(1234, second.imageId)
+		assertEquals("bogusSender", second.sender)
+		assertEquals(thumbnail, second.thumbnail)
+		assertEquals(fullSized, second.image)
 	}
 
 	//endregion

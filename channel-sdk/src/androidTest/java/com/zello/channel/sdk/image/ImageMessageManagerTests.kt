@@ -2,6 +2,7 @@ package com.zello.channel.sdk.image
 
 import android.graphics.Bitmap
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.zello.channel.sdk.ImageInfo
 import com.zello.channel.sdk.SentImageCallback
 import com.zello.channel.sdk.TestTransport
 import com.zello.channel.sdk.platform.hexString
@@ -29,9 +30,15 @@ class ImageMessageManagerTests {
 		transport = TestTransport()
 	}
 
+	private var receivedImageMessage: ImageInfo? = null
 	fun setup(coroutineScope: CoroutineScope) {
 		val immediateExecutor = Executor { p0 -> p0.run() }
-		manager = ImageMessageManagerImpl(backgroundScope = coroutineScope, mainThreadDispatcher = immediateExecutor.asCoroutineDispatcher())
+		val listener = object : ImageMessageManagerListener {
+			override fun onImageMessage(message: ImageInfo) {
+				receivedImageMessage = message
+			}
+		}
+		manager = ImageMessageManagerImpl(listener, backgroundScope = coroutineScope, mainThreadDispatcher = immediateExecutor.asCoroutineDispatcher())
 	}
 
 	@Test
@@ -153,4 +160,90 @@ class ImageMessageManagerTests {
 			assertTrue("SentImageCallback wasn't called", continuationCalled)
 		}
 	}
+
+	// Verify that listener receives two events when image comes in after thumbnail
+	@Test
+	fun testOnImageData_ThumbnailThenImage_CallsListenerTwice() {
+		runBlocking {
+			setup(coroutineScope = this)
+
+			val thumbnail = TestImageUtils.createRedBitmap(90, 72)
+			val thumbnailStream = ByteArrayOutputStream()
+			thumbnail.compress(Bitmap.CompressFormat.JPEG, 90, thumbnailStream)
+			manager.onImageHeader(12345, "bogusSender", Dimensions(500, 400))
+			manager.onImageData(12345, ImageTag.THUMBNAIL.imageType, thumbnailStream.toByteArray())
+			yield() // Required to let ImageMessageManager's coroutines run
+
+			val received = receivedImageMessage
+			assertNotNull("Listener not called", received)
+			if (received == null) { return@runBlocking }
+			assertEquals(12345, received.imageId)
+			assertEquals("bogusSender", received.sender)
+			assertNull(received.image)
+			val receivedThumbnail = received.thumbnail
+			assertNotNull(receivedThumbnail)
+			if (receivedThumbnail == null) { return@runBlocking }
+			assertEquals(90, receivedThumbnail.width)
+			assertEquals(72, receivedThumbnail.height)
+
+			// Verify behavior when full-sized image is received
+			receivedImageMessage = null
+			val fullSized = TestImageUtils.createRedBitmap(500, 400)
+			val fullSizedStream = ByteArrayOutputStream()
+			fullSized.compress(Bitmap.CompressFormat.JPEG, 90, fullSizedStream)
+			manager.onImageData(12345, ImageTag.IMAGE.imageType, fullSizedStream.toByteArray())
+			yield()
+
+			val second = receivedImageMessage
+			assertNotNull("Listener not called for full-sized image", second)
+			if (second == null) { return@runBlocking }
+			assertEquals(12345, second.imageId)
+			assertEquals("bogusSender", second.sender)
+			assertNotNull(second.thumbnail)
+			val receivedImage = second.image
+			assertNotNull(receivedImage)
+			if (receivedImage == null) { return@runBlocking }
+			assertEquals(500, receivedImage.width)
+			assertEquals(400, receivedImage.height)
+		}
+	}
+
+	// Verify that listener receives one event when thumbnail comes in after image
+	@Test
+	fun testOnImageData_ImageThenThumbnail_CallsListenerOnce() {
+		runBlocking {
+			setup(coroutineScope = this)
+
+			manager.onImageHeader(12345, "bogusSender", Dimensions(500, 400))
+
+			val fullSized = TestImageUtils.createRedBitmap(500, 400)
+			val fullSizedStream = ByteArrayOutputStream()
+			fullSized.compress(Bitmap.CompressFormat.JPEG, 90, fullSizedStream)
+			manager.onImageData(12345, ImageTag.IMAGE.imageType, fullSizedStream.toByteArray())
+			yield()
+
+			val received = receivedImageMessage
+			assertNotNull("Listener not called for full-sized image", received)
+			if (received == null) { return@runBlocking }
+			assertEquals(12345, received.imageId)
+			assertEquals("bogusSender", received.sender)
+			assertNull(received.thumbnail)
+			val receivedImage = received.image
+			assertNotNull(receivedImage)
+			if (receivedImage == null) { return@runBlocking }
+			assertEquals(500, receivedImage.width)
+			assertEquals(400, receivedImage.height)
+			receivedImageMessage = null
+
+			val thumbnail = TestImageUtils.createRedBitmap(90, 72)
+			val thumbnailStream = ByteArrayOutputStream()
+			thumbnail.compress(Bitmap.CompressFormat.JPEG, 90, thumbnailStream)
+			manager.onImageData(12345, ImageTag.THUMBNAIL.imageType, thumbnailStream.toByteArray())
+			yield() // Required to let ImageMessageManager's coroutines run
+
+			val second = receivedImageMessage
+			assertNull("Listener called for thumbnail", second)
+		}
+	}
+
 }

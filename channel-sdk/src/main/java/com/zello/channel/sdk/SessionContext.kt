@@ -1,6 +1,7 @@
 package com.zello.channel.sdk
 
 import com.zello.channel.sdk.image.ImageMessageManager
+import com.zello.channel.sdk.image.ImageMessageManagerListener
 import com.zello.channel.sdk.platform.AudioReceiver
 import com.zello.channel.sdk.platform.AudioReceiverEvents
 import com.zello.channel.sdk.platform.AudioSource
@@ -17,13 +18,14 @@ import com.zello.channel.sdk.transport.TransportFactory
 internal interface SessionContext {
 
 	val transportFactory: TransportFactory
-	val imageMessageManager: ImageMessageManager
 
 	fun loadNativeLibraries(logger: SessionLogger?): Boolean
 
 	fun setLogger(logger: SessionLogger?)
 
 	fun getLogger(): SessionLogger
+
+	fun createImageMessageManager(listener: ImageMessageManagerListener): ImageMessageManager
 
 	fun createAudioSource(configuration: OutgoingVoiceConfiguration?, audioEventHandler: AudioSourceEvents, stream: OutgoingVoiceStream): AudioSource
 
