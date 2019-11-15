@@ -6,6 +6,8 @@ import android.graphics.Canvas
 import android.graphics.Color.argb
 import android.graphics.Paint
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.zello.channel.sdk.platform.compressedToJpeg
+import com.zello.channel.sdk.platform.resizedToMaxDimensions
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -29,17 +31,17 @@ class ImageUtilsTests {
 		val original = TestImageUtils.createRedBitmap(100, 100)
 
 		// Verify that we don't resize images that fit the max dimensions
-		val resized = ImageUtils.bitmapWithMaxDimensions(original, 100, 100)
+		val resized = original.resizedToMaxDimensions(Dimensions.square(100))
 		assertEquals(100, resized.width)
 		assertEquals(100, resized.height)
 
 		// Verify that we resize an image whose height is too large
-		val resizedTooTall = ImageUtils.bitmapWithMaxDimensions(original, 100, 60)
+		val resizedTooTall = original.resizedToMaxDimensions(Dimensions(100, 60))
 		assertEquals("wrong width", 60, resizedTooTall.width)
 		assertEquals("wrong height",60, resizedTooTall.height)
 
 		// Verify that we resize an image whose width is too large
-		val resizedTooWide = ImageUtils.bitmapWithMaxDimensions(original, 40, 100)
+		val resizedTooWide = original.resizedToMaxDimensions(Dimensions(40, 100))
 		assertEquals("wrong width", 40, resizedTooWide.width)
 		assertEquals("wrong height", 40, resizedTooWide.height)
 	}
@@ -47,7 +49,7 @@ class ImageUtilsTests {
 	@Test
 	fun testCompressImage() {
 		val original = TestImageUtils.createRedBitmap(100, 100)
-		val compressed = ImageUtils.compressImage(original, Int.MAX_VALUE)
+		val compressed = original.compressedToJpeg(Int.MAX_VALUE)
 		val decoded = BitmapFactory.decodeByteArray(compressed, 0, compressed.size)
 		assertNotNull("Failed to decode image", decoded)
 		assertEquals("Decoded to wrong width", 100, decoded.width)
@@ -57,7 +59,7 @@ class ImageUtilsTests {
 		val fractalStream = javaClass.classLoader.getResourceAsStream("fractal_Wallpaper_011.jpg")
 		val fractal = BitmapFactory.decodeStream(fractalStream)
 		assertNotNull("Failed to load test image", fractal)
-		val compressedFractal = ImageUtils.compressImage(fractal, 400000)
+		val compressedFractal = fractal.compressedToJpeg(400000)
 		assertTrue("Compressed test image too large", compressedFractal.size <= 400000)
 		val decodedFractal = BitmapFactory.decodeByteArray(compressedFractal, 0, compressedFractal.size)
 		assertNotNull("Failed to decode test image", decodedFractal)
@@ -65,7 +67,7 @@ class ImageUtilsTests {
 		assertEquals(fractal.height, decodedFractal.height)
 
 		// Test with size that's too small to fit the image
-		val compressedGaveUp = ImageUtils.compressImage(fractal, 10000)
+		val compressedGaveUp = fractal.compressedToJpeg(10000)
 		assertTrue(compressedGaveUp.size > 10000)
 		val decodedGaveUp = BitmapFactory.decodeByteArray(compressedGaveUp, 0, compressedGaveUp.size)
 		assertNotNull("Failed to decode too large test image", decodedGaveUp)

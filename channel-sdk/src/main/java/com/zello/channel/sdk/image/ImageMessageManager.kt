@@ -4,6 +4,9 @@ import android.graphics.Bitmap
 import com.zello.channel.sdk.SendImageError
 import com.zello.channel.sdk.SentImageCallback
 import com.zello.channel.sdk.commands.CommandSendImage
+import com.zello.channel.sdk.platform.compressedToJpeg
+import com.zello.channel.sdk.platform.dimensions
+import com.zello.channel.sdk.platform.resizedToMaxDimensions
 import com.zello.channel.sdk.transport.Transport
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -27,10 +30,10 @@ internal class ImageMessageManagerImpl(private val backgroundScope: CoroutineSco
 
 	override fun sendImage(image: Bitmap, transport: Transport, recipient: String?, continuation: SentImageCallback?) {
 		backgroundScope.launch {
-			val resizedImage = ImageUtils.bitmapWithMaxDimensions(image, maxDimension, maxDimension)
-			val thumbnail = ImageUtils.bitmapWithMaxDimensions(image, maxThumbnailDimension, maxThumbnailDimension)
-			val imageBytes = ImageUtils.compressImage(resizedImage, maxSize = maxImageDataLength)
-			val thumbnailBytes = ImageUtils.compressImage(thumbnail, maxSize = Int.MAX_VALUE)
+			val resizedImage = image.resizedToMaxDimensions(Dimensions.square(maxDimension))
+			val thumbnail = image.resizedToMaxDimensions(Dimensions.square(maxThumbnailDimension))
+			val imageBytes = resizedImage.compressedToJpeg(maxImageDataLength)
+			val thumbnailBytes = thumbnail.compressedToJpeg(Int.MAX_VALUE)
 			val sendImageCommand = object: CommandSendImage(transport, resizedImage.dimensions, imageBytes.size, thumbnailBytes.size, recipient = recipient) {
 				override fun sendImageBody(imageId: Int) {
 					transport.sendImageData(imageId, ImageTag.THUMBNAIL.imageType, thumbnailBytes)

@@ -5,6 +5,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.zello.channel.sdk.SentImageCallback
 import com.zello.channel.sdk.TestTransport
 import com.zello.channel.sdk.platform.hexString
+import com.zello.channel.sdk.platform.resizedToMaxDimensions
 import junit.framework.Assert.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.asCoroutineDispatcher
@@ -39,7 +40,7 @@ class ImageMessageManagerTests {
 			setup(coroutineScope = this)
 
 			val image = TestImageUtils.createRedBitmap(100, 120)
-			val expectedThumbnail = ImageUtils.bitmapWithMaxDimensions(image, 90, 90)
+			val expectedThumbnail = image.resizedToMaxDimensions(Dimensions.square(90))
 			val imageByteStream = ByteArrayOutputStream()
 			image.compress(Bitmap.CompressFormat.JPEG, 90, imageByteStream)
 			val thumbnailByteStream = ByteArrayOutputStream()
@@ -84,7 +85,7 @@ class ImageMessageManagerTests {
 			setup(coroutineScope = this)
 
 			val image = TestImageUtils.createRedBitmap(100, 120)
-			val expectedThumbnail = ImageUtils.bitmapWithMaxDimensions(image, 90, 90)
+			val expectedThumbnail = image.resizedToMaxDimensions(Dimensions.square(90))
 			val imageByteStream = ByteArrayOutputStream()
 			image.compress(Bitmap.CompressFormat.JPEG, 90, imageByteStream)
 			val thumbnailByteStream = ByteArrayOutputStream()
