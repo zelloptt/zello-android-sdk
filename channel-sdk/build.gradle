@@ -63,7 +63,7 @@ android {
 
 				pom.withXml {
 					def dependenciesNode = asNode().appendNode('dependencies')
-					configurations.compile.allDependencies.each { dependency ->
+					configurations.implementation.allDependencies.each { dependency ->
 						def dependencyNode = dependenciesNode.appendNode('dependency')
 						dependencyNode.appendNode('groupId', dependency.group)
 						dependencyNode.appendNode('artifactId', dependency.name)

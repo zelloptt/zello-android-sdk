@@ -5,6 +5,9 @@ import android.graphics.Bitmap
 import com.zello.channel.sdk.commands.Command
 import com.zello.channel.sdk.commands.CommandLogon
 import com.zello.channel.sdk.commands.CommandSendText
+import com.zello.channel.sdk.image.Dimensions
+import com.zello.channel.sdk.image.ImageMessageManager
+import com.zello.channel.sdk.image.ImageMessageManagerListener
 import com.zello.channel.sdk.platform.Utils
 import com.zello.channel.sdk.transport.Transport
 import com.zello.channel.sdk.transport.TransportEvents
@@ -44,6 +47,12 @@ class Session internal constructor(
     private val voiceManager = VoiceManager(context)
     private var transport: Transport? = null
     private var commandLogon: CommandLogon? = null
+
+	private val imageMessageManager = context.createImageMessageManager(object : ImageMessageManagerListener {
+			override fun onImageMessage(message: ImageInfo) {
+				sessionListener?.onImageMessage(this@Session, message)
+			}
+		})
 
     internal val logger = context.getLogger()
 
@@ -206,13 +215,13 @@ class Session internal constructor(
 	fun sendImage(image: Bitmap, continuation: SentImageCallback?) {
 		if (!initialized) return
 		val transport = transport ?: return
-		context.imageMessageManager.sendImage(image, transport, continuation = continuation)
+		imageMessageManager.sendImage(image, transport, continuation = continuation)
 	}
 
 	fun sendImage(image: Bitmap, recipient: String, continuation: SentImageCallback?) {
 		if (!initialized) return
 		val transport = transport ?: return
-		context.imageMessageManager.sendImage(image, transport, recipient = recipient, continuation = continuation)
+		imageMessageManager.sendImage(image, transport, recipient = recipient, continuation = continuation)
 	}
 
 	/**
@@ -316,6 +325,10 @@ class Session internal constructor(
                 override fun onIncomingVoiceStreamData(streamId: Int, packetId: Int, data: ByteArray) {
                     this@Session.onIncomingVoiceStreamData(streamId, packetId, data)
                 }
+
+				override fun onIncomingImageData(imageId: Int, imageType: Int, data: ByteArray) {
+					this@Session.onIncomingImageData(imageId, imageType, data)
+				}
             }, address, requestTimeoutSec)
             state = SessionState.CONNECTING
             this.transport = transport
@@ -326,6 +339,10 @@ class Session internal constructor(
             false
         }
     }
+
+	private fun onIncomingImageData(imageId: Int, imageType: Int, data: ByteArray) {
+		imageMessageManager.onImageData(imageId, imageType, data)
+	}
 
     private fun performDisconnect(): Boolean {
         val transport = transport
@@ -437,7 +454,31 @@ class Session internal constructor(
             Command.eventOnError -> handleServerError(json)
 			Command.eventOnChannelStatus -> handleChannelStatus(json)
             Command.eventOnTextMessage -> handleTextMessage(json)
+			Command.eventOnImageMessage -> handleImageMessage(json)
 		}
+	}
+
+	private fun handleImageMessage(json: JSONObject) {
+		val sender = json.optString(Command.keyFrom)
+		val imageId = json.optInt(Command.keyMessageId)
+		if (imageId == null) {
+			// TODO: Check for missing image id
+			return
+		}
+		val compressionType = json.optString(Command.keyType)
+		// TODO: Check for missing or invalid image id
+		val height = json.optInt(Command.keyImageHeight)
+		if (height == null) {
+			// TODO: Check for missing or invalid image height
+			return
+		}
+		val width = json.optInt(Command.keyImageWidth)
+		if (width == null) {
+			// TODO: Check for missing or invalid image width
+			return
+		}
+
+		imageMessageManager.onImageHeader(imageId, sender, Dimensions(width, height))
 	}
 
 	private fun handleChannelStatus(json: JSONObject) {

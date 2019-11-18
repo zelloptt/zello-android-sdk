@@ -4,6 +4,8 @@ import android.os.Handler
 import com.zello.channel.sdk.SessionConnectError
 import com.zello.channel.sdk.SessionConnectErrorException
 import com.zello.channel.sdk.commands.Command
+import com.zello.channel.sdk.platform.HandlerFactory
+import com.zello.channel.sdk.platform.HandlerFactoryImpl
 import com.zello.channel.sdk.platform.Utils
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -15,9 +17,9 @@ import org.json.JSONObject
 import java.lang.ref.WeakReference
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
-import java.util.concurrent.TimeUnit
 
-internal class TransportWebSockets(private val httpClientFactory: HttpClientFactory = HttpClientFactoryImpl()) : Transport, WebSocketListener() {
+internal class TransportWebSockets(private val httpClientFactory: HttpClientFactory = HttpClientFactoryImpl(),
+								   private val handlerFactory: HandlerFactory = HandlerFactoryImpl()) : Transport, WebSocketListener() {
 
 	private var events: TransportEvents? = null
 	private var handler: Handler? = null
@@ -36,7 +38,7 @@ internal class TransportWebSockets(private val httpClientFactory: HttpClientFact
 			throw SessionConnectErrorException(SessionConnectError.UNKNOWN)
 		}
 		this.events = events
-		handler = Handler(Handler.Callback { msg ->
+		handler = handlerFactory.handler(Handler.Callback { msg ->
 			when (msg.what) {
 				SOCKET_EVENT -> {
 					(msg.obj as TransportWebSockets.SocketEvent).run(this)
@@ -227,6 +229,15 @@ internal class TransportWebSockets(private val httpClientFactory: HttpClientFact
 				val streamId = ntoh.int
 				val packetId = ntoh.int
 				events?.onIncomingVoiceStreamData(streamId, packetId, data.copyOfRange(9, data.size))
+			}
+
+			PACKET_TYPE_IMAGE -> if (bytes.size() > 9) {
+				val data = bytes.toByteArray()
+				val ntoh = ByteBuffer.wrap(data, 1, 8).order(ByteOrder.BIG_ENDIAN)
+				val imageId = ntoh.int
+				val imageType = ntoh.int
+				val imageData = data.copyOfRange(9, data.size)
+				events?.onIncomingImageData(imageId, imageType, imageData)
 			}
 		}
 	}

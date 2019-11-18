@@ -40,4 +40,13 @@ internal interface TransportEvents {
 	 */
 	fun onIncomingVoiceStreamData(streamId: Int, packetId: Int, data: ByteArray)
 
+	/**
+	 * There's an incoming image from the server
+	 *
+	 * @param imageId Image ID
+	 * @param imageType The type tag of the image. Corresponds to ImageTag values.
+	 * @param data The encoded image data
+	 */
+	fun onIncomingImageData(imageId: Int, imageType: Int, data: ByteArray)
+
 }

@@ -86,6 +86,7 @@ internal abstract class Command protected constructor(transport: Transport, priv
 		val keyImageHeight = "height"
 		val keyImageId = "image_id"
 		val keyTextMessageBody = "text"
+		val keyMessageId = "message_id"
 
 		val valAudio = "audio"
 
@@ -119,6 +120,7 @@ internal abstract class Command protected constructor(transport: Transport, priv
 		val eventOnStreamStop = "on_stream_stop"
 		val eventOnError = "on_error"
 		val eventOnTextMessage = "on_text_message"
+		val eventOnImageMessage = "on_image"
 	}
 
 }

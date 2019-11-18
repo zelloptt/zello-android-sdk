@@ -152,4 +152,21 @@ interface SessionListener {
 	 * @param message the message that was received
 	 */
 	fun onTextMessage(session: Session, sender: String, message: String)
+
+	/**
+	 * This method is called when an image message is received from another user in the channel. It
+	 * is likely that this method will be called twice for each received image: once when the thumbnail
+	 * is received, and again when the full-sized image is received. The `imageInfo` object will
+	 * contain the same `imageId` value for both calls.
+	 *
+	 * @param session the session that received an image message
+	 * @param imageInfo the metadata and image that was received
+	 */
+	fun onImageMessage(session: Session, imageInfo: ImageInfo)
+
+	/**
+	 * For informational errors
+	 */
+	// TODO: Finalize onError(session:, error:) parameters
+	fun onError(session: Session, error: Error) { }
 }
