@@ -2,6 +2,8 @@ package com.zello.channel.sdk.image
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.os.SystemClock
+import android.support.annotation.MainThread
 import com.zello.channel.sdk.ImageInfo
 import com.zello.channel.sdk.SendImageError
 import com.zello.channel.sdk.SentImageCallback
@@ -14,6 +16,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -22,7 +25,7 @@ internal enum class ImageTag(val imageType: Int) {
 	THUMBNAIL(2);
 
 	companion object {
-		private val map = ImageTag.values().associateBy(ImageTag::imageType)
+		private val map = values().associateBy(ImageTag::imageType)
 		fun fromInt(tag: Int): ImageTag? = map[tag]
 	}
 }
@@ -39,15 +42,28 @@ internal interface ImageMessageManagerListener {
 
 internal data class IncomingImageInfo(val imageId: Int, val sender: String, val dimensions: Dimensions) {
 	var thumbnail: Bitmap? = null
+		set(value) {
+			field = value
+			lastTouched = SystemClock.elapsedRealtime()
+		}
+
 	var image: Bitmap? = null
+		set(value) {
+			field = value
+			lastTouched = SystemClock.elapsedRealtime()
+		}
+
+	// ms since device boot
+	var lastTouched: Long = SystemClock.elapsedRealtime()
+		private set
 }
 
 // TODO: Replace GlobalScope with a class-specific coroutine scope (Global scope is recommended against?)
 internal class ImageMessageManagerImpl(private val listener: ImageMessageManagerListener,
 									   private val backgroundScope: CoroutineScope = GlobalScope,
-									   private val mainThreadDispatcher: CoroutineDispatcher = Dispatchers.Main) : ImageMessageManager {
+									   private val mainThreadDispatcher: CoroutineDispatcher = Dispatchers.Main,
+									   private val incomingImageTimeout: Long = 2 * 60 * 1000L) : ImageMessageManager {
 
-	// TODO: Remove unreceived images after a timeout, or if there's a low-memory situation
 	private var incomingImages = hashMapOf<Int, IncomingImageInfo>()
 
 	override fun sendImage(image: Bitmap, transport: Transport, recipient: String?, continuation: SentImageCallback?) {
@@ -75,8 +91,12 @@ internal class ImageMessageManagerImpl(private val listener: ImageMessageManager
 	}
 
 	override fun onImageHeader(imageId: Int, sender: String, dimensions: Dimensions) {
-		val info = IncomingImageInfo(imageId, sender, dimensions)
-		incomingImages[imageId] = info
+		backgroundScope.launch(mainThreadDispatcher) {
+			val info = IncomingImageInfo(imageId, sender, dimensions)
+			incomingImages[imageId] = info
+
+			setNeedsCleanup()
+		}
 	}
 
 	override fun onImageData(imageId: Int, type: Int, data: ByteArray) {
@@ -100,10 +120,51 @@ internal class ImageMessageManagerImpl(private val listener: ImageMessageManager
 						imageInfo.thumbnail = decoded
 						incomingImages[imageId] = imageInfo
 						message = ImageInfo(imageId, imageInfo.sender, decoded, imageInfo.image)
+						setNeedsCleanup()
 					}
 				}
 				listener.onImageMessage(message)
 			}
+		}
+	}
+
+	/// last time we performed a cleanup (ms since system boot)
+	private var lastCleanup = 0L
+	private var needsCleanup = false
+
+	@MainThread
+	private fun setNeedsCleanup() {
+		val now = SystemClock.elapsedRealtime()
+		if (now - lastCleanup < incomingImageTimeout) {
+			return
+		}
+
+		needsCleanup = true
+
+		// Schedule cleanup after incomingImageTimeout
+		backgroundScope.launch {
+			delay(incomingImageTimeout)
+			withContext(mainThreadDispatcher) {
+				cleanupIncomingImagesIfNeeded()
+			}
+		}
+	}
+
+	@MainThread
+	private fun cleanupIncomingImagesIfNeeded() {
+		if (!needsCleanup) {
+			return
+		}
+
+		val now = SystemClock.elapsedRealtime()
+		val toRemove = mutableListOf<Int>()
+		for ((imageId, info) in incomingImages) {
+			if (now - incomingImageTimeout > info.lastTouched) {
+				toRemove.add(imageId)
+			}
+		}
+		for (imageId in toRemove) {
+			incomingImages.remove(imageId)
 		}
 	}
 
