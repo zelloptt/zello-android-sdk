@@ -1,12 +1,14 @@
 package com.zello.channel.sdk
 
 import android.graphics.Bitmap
+import android.location.Criteria
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.zello.channel.sdk.image.Dimensions
 import com.zello.channel.sdk.image.ImageMessageManager
 import com.zello.channel.sdk.image.ImageMessageManagerListener
 import com.zello.channel.sdk.image.ImageTag
 import com.zello.channel.sdk.image.TestImageUtils
+import com.zello.channel.sdk.location.LocationManager
 import com.zello.channel.sdk.platform.AudioReceiver
 import com.zello.channel.sdk.platform.AudioReceiverEvents
 import com.zello.channel.sdk.platform.AudioSource
@@ -18,9 +20,7 @@ import com.zello.channel.sdk.platform.EncoderListener
 import com.zello.channel.sdk.platform.PlayerListener
 import com.zello.channel.sdk.platform.hexString
 import com.zello.channel.sdk.transport.Transport
-import com.zello.channel.sdk.transport.TransportEvents
 import com.zello.channel.sdk.transport.TransportFactory
-import com.zello.channel.sdk.transport.TransportSendAck
 import org.json.JSONObject
 import org.junit.Assert.*
 import org.junit.Before
@@ -202,9 +202,24 @@ internal class TestImageMessageManager: ImageMessageManager {
 	}
 }
 
+internal class MockZelloLocationManager : LocationManager {
+	var sendLocationCalled: Boolean = false
+	var criteria: Criteria? = null
+	var recipient: String? = null
+	override fun sendLocation(transport: Transport, criteria: Criteria, recipient: String?, callback: SentLocationCallback?) {
+		sendLocationCalled = true
+		this.criteria = criteria
+		this.recipient = recipient
+	}
+
+}
+
 internal class TestSessionContext: SessionContext {
 	override val transportFactory: TestTransportFactory = TestTransportFactory()
+	override var hasLocationPermission: Boolean = false
+
 	val imageMessageManager: TestImageMessageManager = TestImageMessageManager()
+	override val locationManager: MockZelloLocationManager = MockZelloLocationManager()
 
 	val encoder: TestEncoder = TestEncoder()
 
@@ -667,6 +682,39 @@ class SessionTests {
 		assertEquals(thumbnail, second.thumbnail)
 		assertEquals(fullSized, second.image)
 	}
+
+	//endregion
+
+	//region Location Messages
+
+	// Verify that we return false if location permission is not granted
+	@Test
+	fun testSendLocation_NotReadyOrNoPermission_ReturnsFalse() {
+		// Verify that sendLocation() returns false if the session hasn't connected yet
+		sessionContext.hasLocationPermission = true
+		assertFalse(session.sendLocation(null))
+
+		// Verify that sendLocation() returns false if location permission hasn't been granted
+		sessionContext.hasLocationPermission = false
+		assertTrue(session.connect())
+		assertFalse(session.sendLocation(null))
+	}
+
+	// Verify that we call the location message manager for location messages
+	@Test
+	fun testSendLocation_CallsLocationMessageManager() {
+		assertTrue(session.connect())
+		sessionContext.hasLocationPermission = true
+		assertTrue("sendLocation returned failure.", session.sendLocation(null))
+		assertTrue("Send location not called.", sessionContext.locationManager.sendLocationCalled)
+		assertNull("Recipient should not have been present.", sessionContext.locationManager.recipient)
+
+		sessionContext.locationManager.sendLocationCalled = false
+		assertTrue("sendLocation returned failure.", session.sendLocation("bogusRecipient", null))
+		assertTrue("Send location not called.", sessionContext.locationManager.sendLocationCalled)
+		assertEquals("bogusRecipient", sessionContext.locationManager.recipient)
+	}
+
 
 	//endregion
 }

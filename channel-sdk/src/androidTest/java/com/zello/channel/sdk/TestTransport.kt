@@ -14,11 +14,8 @@ internal class TestTransport: Transport {
 	var connectedAddress: String? = null
 		private set
 	var sentCommand: String? = null
-		private set
 	var sentJson: JSONObject? = null
-		private set
 	var responseHandler: TransportSendAck? = null
-		private set
 
 	@Throws(SessionConnectErrorException::class)
 	override fun connect(events: TransportEvents, address: String, requestTimeoutSec: Long) {

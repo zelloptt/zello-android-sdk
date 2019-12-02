@@ -87,6 +87,10 @@ internal abstract class Command protected constructor(transport: Transport, priv
 		val keyImageId = "image_id"
 		val keyTextMessageBody = "text"
 		val keyMessageId = "message_id"
+		val keyLatitude = "latitude"
+		val keyLongitude = "longitude"
+		val keyAccuracy = "accuracy"
+		val keyFormattedAddress = "formatted_address"
 
 		val valAudio = "audio"
 

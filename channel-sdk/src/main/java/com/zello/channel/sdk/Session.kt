@@ -2,11 +2,11 @@ package com.zello.channel.sdk
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.location.Criteria
 import com.zello.channel.sdk.commands.Command
 import com.zello.channel.sdk.commands.CommandLogon
 import com.zello.channel.sdk.commands.CommandSendText
 import com.zello.channel.sdk.image.Dimensions
-import com.zello.channel.sdk.image.ImageMessageManager
 import com.zello.channel.sdk.image.ImageMessageManagerListener
 import com.zello.channel.sdk.platform.Utils
 import com.zello.channel.sdk.transport.Transport
@@ -225,6 +225,20 @@ class Session internal constructor(
 	}
 
 	/**
+	 * Criteria used when determining the user's location for `sendLocation` calls.
+	 *
+	 * If not set, Android's default `Criteria` is used. Altitude, speed, and bearing are not sent
+	 * to the channel. If a Criteria is set that has those features enabled, they will be ignored.
+	 */
+	var locationCriteria: Criteria = Criteria()
+		set(newCriteria) {
+			newCriteria.isBearingRequired = false
+			newCriteria.isSpeedRequired = false
+			newCriteria.isAltitudeRequired = false
+			field = newCriteria
+		}
+
+	/**
 	 * Sends the user's current location to the channel
 	 *
 	 * When the user's location is found, `continuation` is also called with the location so you can
@@ -234,13 +248,22 @@ class Session internal constructor(
 	 * If the location was found, it reports the location as well as a reverse geocoded description
 	 * if available. If an error was encountered acquiring the location, it reports the error.
 	 */
-	// TODO: Define error type for location messages
-	fun sendLocation(continuation: SentLocationCallback?) {
-		// TODO: Implement sendLocation(continuation:)
+	fun sendLocation(continuation: SentLocationCallback?): Boolean {
+		if (!initialized) return false
+		val transport = transport ?: return false
+		if (!context.hasLocationPermission) return false
+
+		context.locationManager.sendLocation(transport, locationCriteria, continuation)
+		return true
 	}
 
-	fun sendLocation(recipient: String, continuation: SentLocationCallback?) {
-		// TODO: Implement sendLocation(recipient:, continuation:)
+	fun sendLocation(recipient: String, continuation: SentLocationCallback?): Boolean {
+		if (!initialized) return false
+		val transport = transport ?: return false
+		if (!context.hasLocationPermission) return false
+
+		context.locationManager.sendLocation(transport, locationCriteria, recipient, continuation)
+		return true
 	}
 
     /**
