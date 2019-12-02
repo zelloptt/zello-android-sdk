@@ -3,6 +3,7 @@ package com.zello.channel.sdk.image
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.SystemClock
+import android.support.annotation.MainThread
 import com.zello.channel.sdk.ImageInfo
 import com.zello.channel.sdk.SendImageError
 import com.zello.channel.sdk.SentImageCallback
@@ -24,7 +25,7 @@ internal enum class ImageTag(val imageType: Int) {
 	THUMBNAIL(2);
 
 	companion object {
-		private val map = ImageTag.values().associateBy(ImageTag::imageType)
+		private val map = values().associateBy(ImageTag::imageType)
 		fun fromInt(tag: Int): ImageTag? = map[tag]
 	}
 }
@@ -63,7 +64,6 @@ internal class ImageMessageManagerImpl(private val listener: ImageMessageManager
 									   private val mainThreadDispatcher: CoroutineDispatcher = Dispatchers.Main,
 									   private val incomingImageTimeout: Long = 2 * 60 * 1000L) : ImageMessageManager {
 
-	// TODO: Remove unreceived images if there's a low-memory situation
 	private var incomingImages = hashMapOf<Int, IncomingImageInfo>()
 
 	override fun sendImage(image: Bitmap, transport: Transport, recipient: String?, continuation: SentImageCallback?) {
@@ -132,7 +132,7 @@ internal class ImageMessageManagerImpl(private val listener: ImageMessageManager
 	private var lastCleanup = 0L
 	private var needsCleanup = false
 
-	/// Only call `setNeedsCleanup` on main thread
+	@MainThread
 	private fun setNeedsCleanup() {
 		val now = SystemClock.elapsedRealtime()
 		if (now - lastCleanup < incomingImageTimeout) {
@@ -150,7 +150,7 @@ internal class ImageMessageManagerImpl(private val listener: ImageMessageManager
 		}
 	}
 
-	/// Only call cleanupIncomingImagesIfNeeded on main thread
+	@MainThread
 	private fun cleanupIncomingImagesIfNeeded() {
 		if (!needsCleanup) {
 			return
