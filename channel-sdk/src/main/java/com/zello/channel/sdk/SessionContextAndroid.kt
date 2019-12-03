@@ -1,10 +1,15 @@
 package com.zello.channel.sdk
 
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
 import android.os.Handler
+import android.support.v4.content.ContextCompat
 import com.zello.channel.sdk.image.ImageMessageManager
 import com.zello.channel.sdk.image.ImageMessageManagerImpl
 import com.zello.channel.sdk.image.ImageMessageManagerListener
+import com.zello.channel.sdk.location.AndroidLocationManagerImpl
+import com.zello.channel.sdk.location.LocationManagerImpl
 import com.zello.channel.sdk.platform.AudioReceiver
 import com.zello.channel.sdk.platform.AudioReceiverEvents
 import com.zello.channel.sdk.platform.AudioSource
@@ -30,6 +35,14 @@ internal class SessionContextAndroid(context: Context) : SessionContext {
 	private var handler: Handler = Handler()
 
 	override val transportFactory: TransportFactory = WebSocketsTransportFactory()
+	override val locationManager = LocationManagerImpl(context, AndroidLocationManagerImpl(context.getSystemService(Context.LOCATION_SERVICE) as android.location.LocationManager))
+
+	override val hasLocationPermission: Boolean
+		get() {
+			val coarse = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION)
+			val fine = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION)
+			return ((coarse == PackageManager.PERMISSION_GRANTED) || (fine == PackageManager.PERMISSION_GRANTED))
+		}
 
 	override fun loadNativeLibraries(logger: SessionLogger?): Boolean {
 		return loadLib("opus", logger) && loadLib("util", logger)

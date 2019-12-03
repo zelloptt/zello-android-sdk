@@ -4,7 +4,11 @@
 
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
-    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+
+	<!-- TODO: Declare microphone as not requred -->
+	<uses-permission android:name="android.permission.RECORD_AUDIO"/>
+
+	<!-- TODO: Declare location as not required -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
 
