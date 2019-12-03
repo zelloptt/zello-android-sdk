@@ -125,6 +125,7 @@ internal abstract class Command protected constructor(transport: Transport, priv
 		val eventOnError = "on_error"
 		val eventOnTextMessage = "on_text_message"
 		val eventOnImageMessage = "on_image"
+		val eventOnLocationMessage = "on_location"
 	}
 
 }
