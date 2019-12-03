@@ -165,8 +165,17 @@ interface SessionListener {
 	fun onImageMessage(session: Session, imageInfo: ImageInfo)
 
 	/**
+	 * This method is called when a location message is received from another user in the channel.
+	 *
+	 * @param session the session that received a location message
+	 * @param sender the username of the user that sent the message
+	 * @param location the location that was received
+	 */
+	fun onLocationMessage(session: Session, sender: String, location: Location)
+
+	/**
 	 * For informational errors
 	 */
 	// TODO: Finalize onError(session:, error:) parameters
-	fun onError(session: Session, error: Error) { }
+	fun onError(session: Session, error: InformationalError) { }
 }

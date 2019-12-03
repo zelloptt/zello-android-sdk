@@ -478,10 +478,61 @@ class Session internal constructor(
 			Command.eventOnChannelStatus -> handleChannelStatus(json)
             Command.eventOnTextMessage -> handleTextMessage(json)
 			Command.eventOnImageMessage -> handleImageMessage(json)
+			Command.eventOnLocationMessage -> handleLocationMessage(json)
 		}
 	}
 
+	private fun handleLocationMessage(json: JSONObject) {
+		val maxLatitude = 90.0
+		val minLatitude = -90.0
+		val maxLongitude = 180.0
+		val minLongitude = -180.0
+		val minAccuracy = 0.0
+		val sender = json.optString(Command.keyFrom)
+		if (!json.has(Command.keyLatitude)) {
+			val error = InvalidMessageFormatError(Command.eventOnLocationMessage, Command.keyLatitude, json, "Missing latitude")
+			sessionListener?.onError(this, error)
+			return
+		}
+		val latitude = json.optDouble(Command.keyLatitude)
+		// Validate latitude value
+		if (latitude < minLatitude || latitude > maxLatitude) {
+			val error = InvalidMessageFormatError(Command.eventOnLocationMessage, Command.keyLatitude, json, "Latitude $latitude out of range $minLatitude..$maxLatitude")
+			sessionListener?.onError(this, error)
+			return
+		}
+		if (!json.has(Command.keyLongitude)) {
+			val error = InvalidMessageFormatError(Command.eventOnLocationMessage, Command.keyLongitude, json, "Missing longitude")
+			sessionListener?.onError(this, error)
+			return
+		}
+		val longitude = json.optDouble(Command.keyLongitude)
+		// Validate longitude value
+		if (longitude < minLongitude || longitude > maxLongitude) {
+			val error = InvalidMessageFormatError(Command.eventOnLocationMessage, Command.keyLongitude, json, "Longitude $longitude out of range $minLongitude..$maxLongitude")
+			sessionListener?.onError(this, error)
+			return
+		}
+		if (!json.has(Command.keyAccuracy)) {
+			val error = InvalidMessageFormatError(Command.eventOnLocationMessage, Command.keyAccuracy, json, "Missing accuracy")
+			sessionListener?.onError(this, error)
+			return
+		}
+		val accuracy = json.optDouble(Command.keyAccuracy)
+		// Validate accuracy value
+		if (accuracy < minAccuracy) {
+			val error = InvalidMessageFormatError(Command.eventOnLocationMessage, Command.keyAccuracy, json, "Accuracy $accuracy may not be negative")
+			sessionListener?.onError(this, error)
+			return
+		}
+		val address = json.optString(Command.keyFormattedAddress, null)
+
+		val location = Location(latitude, longitude, accuracy, address)
+		sessionListener?.onLocationMessage(this, sender, location)
+	}
+
 	private fun handleImageMessage(json: JSONObject) {
+		// TODO: Fix invalid format handling
 		val sender = json.optString(Command.keyFrom)
 		val imageId = json.optInt(Command.keyMessageId)
 		if (imageId == null) {

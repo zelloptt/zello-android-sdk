@@ -318,6 +318,17 @@ internal class TestSessionListener: SessionListener {
 		receivedImageMessage = imageInfo
 	}
 
+	var receivedLocation: Location? = null
+	var receivedLocationSender: String? = null
+	override fun onLocationMessage(session: Session, sender: String, location: Location) {
+		receivedLocationSender = sender
+		receivedLocation = location
+	}
+
+	var infoError: InformationalError? = null
+	override fun onError(session: Session, error: InformationalError) {
+		infoError = error
+	}
 }
 
 internal class TestVoiceSource: VoiceSource {
@@ -715,6 +726,165 @@ class SessionTests {
 		assertEquals("bogusRecipient", sessionContext.locationManager.recipient)
 	}
 
+	val onLocationPayload: JSONObject by lazy {
+		val json = JSONObject()
+		json.put("command", "on_location")
+		json.put("channel", "testChannel")
+		json.put("from", "bogusSender")
+		json.put("message_id", 1234)
+		json.put("latitude", 23.0)
+		json.put("longitude", 15.0)
+		json.put("accuracy", 100.0)
+		json.put("formatted_address", "A Fancy Place, MD")
+		json
+	}
+
+	// Verify that we report received location messages to the listener
+	@Test
+	fun testOnLocation_ReportsLocation() {
+		assertTrue(session.connect())
+
+		sessionContext.transportFactory.transport.eventListener?.onIncomingCommand("on_location", onLocationPayload, null)
+
+		assertEquals("bogusSender", sessionListener.receivedLocationSender)
+		assertEquals(23.0, sessionListener.receivedLocation?.latitude)
+		assertEquals(15.0, sessionListener.receivedLocation?.longitude)
+		assertEquals(100.0, sessionListener.receivedLocation?.accuracy)
+		assertEquals("A Fancy Place, MD", sessionListener.receivedLocation?.address)
+
+		// Verify we still get a location without an address
+		sessionListener.receivedLocation = null
+		sessionListener.receivedLocationSender = null
+		val missingAddress = JSONObject(onLocationPayload, arrayOf("command", "channel", "from", "message_id", "latitude", "longitude", "accuracy"))
+		sessionContext.transportFactory.transport.eventListener?.onIncomingCommand("on_location", missingAddress, null)
+		assertEquals("bogusSender", sessionListener.receivedLocationSender)
+		assertEquals(23.0, sessionListener.receivedLocation?.latitude)
+		assertEquals(15.0, sessionListener.receivedLocation?.longitude)
+		assertEquals(100.0, sessionListener.receivedLocation?.accuracy)
+		assertNull(sessionListener.receivedLocation?.address)
+	}
+
+	// Verify that we report format errors in incoming location messages
+	@Test
+	fun testOnLocation_InvalidFormat_ReportsError() {
+		val allLocationKeys = arrayOf("command", "channel", "from", "message_id", "latitude", "longitude", "accuracy", "formatted_address")
+
+		assertTrue(session.connect())
+
+		// Missing latitude
+		val missingLatitude = JSONObject(onLocationPayload, arrayOf("command", "channel", "from", "message_id", "longitude", "accuracy", "formatted_address"))
+		sessionContext.transportFactory.transport.eventListener?.onIncomingCommand("on_location", missingLatitude, null)
+		assertNull(sessionListener.receivedLocationSender)
+		assertNull(sessionListener.receivedLocation)
+		var error = sessionListener.infoError as? InvalidMessageFormatError
+		assertNotNull(error)
+		if (error == null) return
+		assertEquals("Missing latitude", error.errorMessage)
+		assertEquals("on_location", error.command)
+		assertEquals("latitude", error.key)
+		assertEquals(missingLatitude, error.payload)
+
+		// Latitude out of range
+		sessionListener.infoError = null
+		val latitudeOverflow = JSONObject(onLocationPayload, allLocationKeys)
+		latitudeOverflow.put("latitude", 100.0)
+		sessionContext.transportFactory.transport.eventListener?.onIncomingCommand("on_location", latitudeOverflow, null)
+		assertNull(sessionListener.receivedLocation)
+		assertNull(sessionListener.receivedLocationSender)
+		error = sessionListener.infoError as? InvalidMessageFormatError
+		assertNotNull(error)
+		if (error == null) return
+		assertEquals("Latitude 100.0 out of range -90.0..90.0", error.errorMessage)
+		assertEquals("on_location", error.command)
+		assertEquals("latitude", error.key)
+		assertEquals(latitudeOverflow, error.payload)
+
+		sessionListener.infoError = null
+		val latitudeUnderflow = JSONObject(onLocationPayload, allLocationKeys)
+		latitudeUnderflow.put("latitude", -95.0)
+		sessionContext.transportFactory.transport.eventListener?.onIncomingCommand("on_location", latitudeUnderflow, null)
+		assertNull(sessionListener.receivedLocation)
+		assertNull(sessionListener.receivedLocationSender)
+		error = sessionListener.infoError as? InvalidMessageFormatError
+		assertNotNull(error)
+		if (error == null) return
+		assertEquals("Latitude -95.0 out of range -90.0..90.0", error.errorMessage)
+		assertEquals("on_location", error.command)
+		assertEquals("latitude", error.key)
+		assertEquals(latitudeUnderflow, error.payload)
+
+		// Missing longitude
+		sessionListener.infoError = null
+		val missingLongitude = JSONObject(onLocationPayload, arrayOf("command", "channel", "from", "message_id", "latitude", "accuracy", "formatted_address"))
+		sessionContext.transportFactory.transport.eventListener?.onIncomingCommand("on_location", missingLongitude, null)
+		assertNull(sessionListener.receivedLocationSender)
+		assertNull(sessionListener.receivedLocation)
+		error = sessionListener.infoError as? InvalidMessageFormatError
+		assertNotNull(error)
+		if (error == null) return
+		assertEquals("Missing longitude", error.errorMessage)
+		assertEquals("on_location", error.command)
+		assertEquals("longitude", error.key)
+		assertEquals(missingLongitude, error.payload)
+
+		// Longitude out of range
+		sessionListener.infoError = null
+		val longitudeOverflow = JSONObject(onLocationPayload, allLocationKeys)
+		longitudeOverflow.put("longitude", 184.0)
+		sessionContext.transportFactory.transport.eventListener?.onIncomingCommand("on_location", longitudeOverflow, null)
+		assertNull("Recieved location with invalid longitude.", sessionListener.receivedLocation)
+		assertNull(sessionListener.receivedLocationSender)
+		error = sessionListener.infoError as? InvalidMessageFormatError
+		assertNotNull(error)
+		if (error == null) return
+		assertEquals("Longitude 184.0 out of range -180.0..180.0", error.errorMessage)
+		assertEquals("on_location", error.command)
+		assertEquals("longitude", error.key)
+		assertEquals(longitudeOverflow, error.payload)
+
+		sessionListener.infoError = null
+		val longitudeUnderflow = JSONObject(onLocationPayload, allLocationKeys)
+		longitudeUnderflow.put("longitude", -185.0)
+		sessionContext.transportFactory.transport.eventListener?.onIncomingCommand("on_location", longitudeUnderflow, null)
+		assertNull("Received location with invalid longitude.", sessionListener.receivedLocation)
+		assertNull(sessionListener.receivedLocationSender)
+		error = sessionListener.infoError as? InvalidMessageFormatError
+		assertNotNull(error)
+		if (error == null) return
+		assertEquals("Longitude -185.0 out of range -180.0..180.0", error.errorMessage)
+		assertEquals("on_location", error.command)
+		assertEquals("longitude", error.key)
+		assertEquals(longitudeUnderflow, error.payload)
+
+		// Missing accuracy
+		sessionListener.infoError = null
+		val missingAccuracy = JSONObject(onLocationPayload, arrayOf("command", "channel", "from", "message_id", "latitude", "longitude", "formatted_address"))
+		sessionContext.transportFactory.transport.eventListener?.onIncomingCommand("on_location", missingAccuracy, null)
+		assertNull(sessionListener.receivedLocationSender)
+		assertNull(sessionListener.receivedLocation)
+		error = sessionListener.infoError as? InvalidMessageFormatError
+		assertNotNull(error)
+		if (error == null) return
+		assertEquals("Missing accuracy", error.errorMessage)
+		assertEquals("on_location", error.command)
+		assertEquals("accuracy", error.key)
+		assertEquals(missingAccuracy, error.payload)
+
+		// Accuracy out of range
+		sessionListener.infoError = null
+		val accuracyUnderflow = JSONObject(onLocationPayload, allLocationKeys)
+		accuracyUnderflow.put("accuracy", -50.0)
+		sessionContext.transportFactory.transport.eventListener?.onIncomingCommand("on_location", accuracyUnderflow, null)
+		assertNull(sessionListener.receivedLocation)
+		assertNull(sessionListener.receivedLocationSender)
+		error = sessionListener.infoError as? InvalidMessageFormatError
+		assertNotNull(error)
+		if (error == null) return
+		assertEquals("Accuracy -50.0 may not be negative", error.errorMessage)
+		assertEquals("on_location", error.command)
+		assertEquals("accuracy", error.key)
+		assertEquals(accuracyUnderflow, error.payload)
+	}
 
 	//endregion
 }
