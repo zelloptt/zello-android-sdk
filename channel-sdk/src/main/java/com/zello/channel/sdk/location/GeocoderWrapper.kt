@@ -5,11 +5,11 @@ import android.location.Address
 /**
  * Wrapper for android.location.Geocoder for testability
  */
-interface Geocoder {
+internal interface Geocoder {
 	fun getFromLocation(latitude: Double, longitude: Double, maxResults: Int): List<Address>
 }
 
-class AndroidGeocoder(private val wrapped: android.location.Geocoder) : Geocoder {
+internal class AndroidGeocoder(private val wrapped: android.location.Geocoder) : Geocoder {
 	override fun getFromLocation(latitude: Double, longitude: Double, maxResults: Int): List<Address> {
 		return wrapped.getFromLocation(latitude, longitude, maxResults)
 	}

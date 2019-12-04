@@ -174,8 +174,12 @@ interface SessionListener {
 	fun onLocationMessage(session: Session, sender: String, location: Location)
 
 	/**
-	 * For informational errors
+	 * Called when a non-fatal error occurs
+	 *
+	 * @param session the session that encountered an error
+	 * @param error an object describing the error encountered. The error object's `errorMessage`
+	 * property has a human-readable message describing the error. Subclasses of `InformationalError`
+	 * may contain more information.
 	 */
-	// TODO: Finalize onError(session:, error:) parameters
 	fun onError(session: Session, error: InformationalError) { }
 }

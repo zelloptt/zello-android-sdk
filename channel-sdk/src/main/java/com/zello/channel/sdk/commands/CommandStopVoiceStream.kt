@@ -11,13 +11,11 @@ internal class CommandStopVoiceStream(transport: Transport, private val streamId
 	override fun error() {
 	}
 
-	override fun getCommandName(): String {
-		return Command.commandStopStream
-	}
+	override fun getCommandName(): String = commandStopStream
 
 	override fun getCommandBody(): JSONObject {
 		val json = JSONObject()
-		json.put(Command.keyStreamId, streamId)
+		json.put(keyStreamId, streamId)
 		return json
 	}
 

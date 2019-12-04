@@ -7,6 +7,7 @@ enum class ReconnectReason {
 	/**
 	 * The network has changed
 	 */
+	@Suppress("unused")
 	NETWORK_CHANGED,
 
 	/**

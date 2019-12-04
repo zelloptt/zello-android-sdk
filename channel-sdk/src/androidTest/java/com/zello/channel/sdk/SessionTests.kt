@@ -175,14 +175,20 @@ internal class TestTransportFactory: TransportFactory {
 }
 
 internal class TestImageMessageManager: ImageMessageManager {
+	var validType: Boolean = true
+	override fun isTypeValid(type: String): Boolean {
+		return validType
+	}
+
 	var listener: ImageMessageManagerListener? = null
 	var sentImage: Bitmap? = null
 		private set
 	var recipient: String? = null
-	override fun sendImage(image: Bitmap, transport: Transport, recipient: String?, continuation: SentImageCallback?) {
+	override fun sendImage(image: Bitmap, transport: Transport, recipient: String?, continuation: (Int, SendImageError?) -> Unit) {
 		this.recipient = recipient
 		sentImage = image
 	}
+
 
 	var receivedImageId: Int? = null
 	var receivedImageSender: String? = null
@@ -609,7 +615,7 @@ class SessionTests {
 		assertTrue(session.connect())
 
 		val image = TestImageUtils.createRedBitmap(500, 400)
-		session.sendImage(image, null)
+		session.sendImage(image)
 		assertNull(sessionContext.imageMessageManager.recipient)
 		assertEquals(image, sessionContext.imageMessageManager.sentImage)
 	}
@@ -619,15 +625,12 @@ class SessionTests {
 		assertTrue(session.connect())
 
 		val image = TestImageUtils.createRedBitmap(500, 400)
-		session.sendImage(image, "bogusRecipient", null)
+		session.sendImage(image, "bogusRecipient")
 		assertEquals("Wrong or missing recipient", "bogusRecipient", sessionContext.imageMessageManager.recipient)
 		assertEquals("Wrong or missing image", image, sessionContext.imageMessageManager.sentImage)
 	}
 
-	@Test
-	fun testOnImageMessageHeader_CallsImageMessageManager() {
-		assertTrue(session.connect())
-
+	val imageHeaderPayload: JSONObject by lazy {
 		val json = JSONObject()
 		json.put("command", "on_image")
 		json.put("channel", "testChannel")
@@ -636,14 +639,165 @@ class SessionTests {
 		json.put("type", "jpeg")
 		json.put("height", 300)
 		json.put("width", 500)
+		json
+	}
+	@Test
+	fun testOnImageMessageHeader_CallsImageMessageManager() {
+		assertTrue(session.connect())
 
-		sessionContext.transportFactory.transport.eventListener?.onIncomingCommand("on_image", json, null)
+		sessionContext.transportFactory.transport.eventListener?.onIncomingCommand("on_image", imageHeaderPayload, null)
 		assertEquals("Didn't call image message manager", 345, sessionContext.imageMessageManager.receivedImageId)
 		assertEquals("Didn't pass sender to image message manager", "bogusSender", sessionContext.imageMessageManager.receivedImageSender)
 		assertEquals("Didn't pass dimensions to image message manager", Dimensions(500, 300), sessionContext.imageMessageManager.receivedDimensions)
 	}
 
-	// TODO: Verify behavior for invalid image message headers
+	// Verify behavior for invalid image message headers
+	@Test
+	fun testOnImageMessageHeader_InvalidHeader() {
+		val allFields = arrayOf("command", "channel", "from", "message_id", "type", "height", "width")
+		var error: InvalidMessageFormatError? = null
+
+		assertTrue(session.connect())
+
+		// Missing message_id
+		sessionListener.infoError = null
+		val missingId = JSONObject(imageHeaderPayload, arrayOf("command", "channel", "from", "type", "height", "width"))
+		sessionContext.transportFactory.transport.eventListener?.onIncomingCommand("on_image", missingId, null)
+		assertNull("Shouldn't have gotten message with missing image id.", sessionContext.imageMessageManager.receivedImageId)
+		assertNull(sessionContext.imageMessageManager.receivedImageSender)
+		assertNull(sessionContext.imageMessageManager.receivedDimensions)
+		error = sessionListener.infoError
+		assertNotNull(error)
+		if (error == null) return
+		assertEquals("Missing image id", error.errorMessage)
+		assertEquals("on_image", error.command)
+		assertEquals("message_id", error.key)
+		assertEquals(missingId, error.payload)
+
+		// Missing type
+		sessionListener.infoError = null
+		val missingType = JSONObject(imageHeaderPayload, arrayOf("command", "channel", "from", "message_id", "height", "width"))
+		sessionContext.transportFactory.transport.eventListener?.onIncomingCommand("on_image", missingType, null)
+		assertNull(sessionContext.imageMessageManager.receivedImageId)
+		assertNull(sessionContext.imageMessageManager.receivedImageSender)
+		assertNull(sessionContext.imageMessageManager.receivedDimensions)
+		error = sessionListener.infoError as? InvalidMessageFormatError
+		assertNotNull(error)
+		if (error == null) return
+		assertEquals("Missing image type", error.errorMessage)
+		assertEquals("on_image", error.command)
+		assertEquals("type", error.key)
+		assertEquals(missingType, error.payload)
+
+		// Invalid type
+		sessionListener.infoError = null
+		sessionContext.imageMessageManager.validType = false
+		val invalidType = JSONObject(imageHeaderPayload, allFields)
+		invalidType.put("type", "badtype")
+		sessionContext.transportFactory.transport.eventListener?.onIncomingCommand("on_image", invalidType, null)
+		assertNull("Should not have received message with invalid type.", sessionContext.imageMessageManager.receivedImageId)
+		assertNull(sessionContext.imageMessageManager.receivedImageSender)
+		assertNull(sessionContext.imageMessageManager.receivedDimensions)
+		error = sessionListener.infoError as? InvalidMessageFormatError
+		assertNotNull(error)
+		if (error == null) return
+		assertEquals("Invalid image type 'badtype'", error.errorMessage)
+		assertEquals("on_image", error.command)
+		assertEquals("type", error.key)
+		assertEquals(invalidType, error.payload)
+
+		sessionContext.imageMessageManager.validType = true
+		// Missing height
+		sessionListener.infoError = null
+		val missingHeight = JSONObject(imageHeaderPayload, arrayOf("command", "channel", "from", "message_id", "type", "width"))
+		sessionContext.transportFactory.transport.eventListener?.onIncomingCommand("on_image", missingHeight, null)
+		assertNull("Should not have received message with missing height.", sessionContext.imageMessageManager.receivedImageId)
+		assertNull(sessionContext.imageMessageManager.receivedImageSender)
+		assertNull(sessionContext.imageMessageManager.receivedDimensions)
+		error = sessionListener.infoError as? InvalidMessageFormatError
+		assertNotNull(error)
+		if (error == null) return
+		assertEquals("Missing image height", error.errorMessage)
+		assertEquals("on_image", error.command)
+		assertEquals("height", error.key)
+		assertEquals(missingHeight, error.payload)
+
+		// Invalid height
+		sessionListener.infoError = null
+		val heightOverflow = JSONObject(imageHeaderPayload, allFields)
+		heightOverflow.put("height", 5000)
+		sessionContext.transportFactory.transport.eventListener?.onIncomingCommand("on_image", heightOverflow, null)
+		assertNull("Should not have received message with invalid height.", sessionContext.imageMessageManager.receivedImageId)
+		assertNull(sessionContext.imageMessageManager.receivedImageSender)
+		assertNull(sessionContext.imageMessageManager.receivedDimensions)
+		error = sessionListener.infoError as? InvalidMessageFormatError
+		assertNotNull(error)
+		if (error == null) return
+		assertEquals("Height 5000 out of allowed range", error.errorMessage)
+		assertEquals("on_image", error.command)
+		assertEquals("height", error.key)
+		assertEquals(heightOverflow, error.payload)
+
+		sessionListener.infoError = null
+		val heightUnderflow = JSONObject(imageHeaderPayload, allFields)
+		heightUnderflow.put("height", 0)
+		sessionContext.transportFactory.transport.eventListener?.onIncomingCommand("on_image", heightUnderflow, null)
+		assertNull("Should not have received message with invalid height.", sessionContext.imageMessageManager.receivedImageId)
+		assertNull(sessionContext.imageMessageManager.receivedImageSender)
+		assertNull(sessionContext.imageMessageManager.receivedDimensions)
+		error = sessionListener.infoError as? InvalidMessageFormatError
+		assertNotNull(error)
+		if (error == null) return
+		assertEquals("Height 0 out of allowed range", error.errorMessage)
+		assertEquals("on_image", error.command)
+		assertEquals("height", error.key)
+		assertEquals(heightUnderflow, error.payload)
+
+		// Missing width
+		sessionListener.infoError = null
+		val missingWidth = JSONObject(imageHeaderPayload, arrayOf("command", "channel", "from", "message_id", "type", "height"))
+		sessionContext.transportFactory.transport.eventListener?.onIncomingCommand("on_image", missingWidth, null)
+		assertNull("Should not have received message with missing width.", sessionContext.imageMessageManager.receivedImageId)
+		assertNull(sessionContext.imageMessageManager.receivedImageSender)
+		assertNull(sessionContext.imageMessageManager.receivedDimensions)
+		error = sessionListener.infoError as? InvalidMessageFormatError
+		assertNotNull(error)
+		if (error == null) return
+		assertEquals("Missing image width", error.errorMessage)
+		assertEquals("on_image", error.command)
+		assertEquals("width", error.key)
+		assertEquals(missingWidth, error.payload)
+
+		// Invalid width
+		sessionListener.infoError = null
+		val widthOverflow = JSONObject(imageHeaderPayload, allFields)
+		widthOverflow.put("width", 4500)
+		sessionContext.transportFactory.transport.eventListener?.onIncomingCommand("on_image", widthOverflow, null)
+		assertNull(sessionContext.imageMessageManager.receivedImageId)
+		assertNull(sessionContext.imageMessageManager.receivedImageSender)
+		assertNull(sessionContext.imageMessageManager.receivedDimensions)
+		error = sessionListener.infoError as? InvalidMessageFormatError
+		if (error == null) return
+		assertEquals("Width 4500 out of allowed range", error.errorMessage)
+		assertEquals("on_image", error.command)
+		assertEquals("width", error.key)
+		assertEquals(widthOverflow, error.payload)
+
+		sessionListener.infoError = null
+		val widthUnderflow = JSONObject(imageHeaderPayload, allFields)
+		widthUnderflow.put("width", 0)
+		sessionContext.transportFactory.transport.eventListener?.onIncomingCommand("on_image", widthUnderflow, null)
+		assertNull(sessionContext.imageMessageManager.receivedImageId)
+		assertNull(sessionContext.imageMessageManager.receivedImageSender)
+		assertNull(sessionContext.imageMessageManager.receivedDimensions)
+		error = sessionListener.infoError as? InvalidMessageFormatError
+		assertNotNull(error)
+		if (error == null) return
+		assertEquals("Width 0 out of allowed range", error.errorMessage)
+		assertEquals("on_image", error.command)
+		assertEquals("width", error.key)
+		assertEquals(widthUnderflow, error.payload)
+	}
 
 	// Verify image data is forwarded to ImageMessageManager
 	@Test

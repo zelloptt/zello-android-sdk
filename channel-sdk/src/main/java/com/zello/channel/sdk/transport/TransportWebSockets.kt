@@ -41,7 +41,7 @@ internal class TransportWebSockets(private val httpClientFactory: HttpClientFact
 		handler = handlerFactory.handler(Handler.Callback { msg ->
 			when (msg.what) {
 				SOCKET_EVENT -> {
-					(msg.obj as TransportWebSockets.SocketEvent).run(this)
+					(msg.obj as SocketEvent).run(this)
 					true
 				}
 				else ->
@@ -221,8 +221,7 @@ internal class TransportWebSockets(private val httpClientFactory: HttpClientFact
 	}
 
 	private fun processIncomingMessage(bytes: ByteString) {
-		val type = bytes.getByte(0)
-		when (type) {
+		when (bytes.getByte(0)) {
 			PACKET_TYPE_STREAM -> if (bytes.size() > 9) {
 				val data = bytes.toByteArray()
 				val ntoh = ByteBuffer.wrap(data, 1, 8).order(ByteOrder.BIG_ENDIAN)
@@ -254,7 +253,7 @@ internal class TransportWebSockets(private val httpClientFactory: HttpClientFact
 				++i
 			}
 		}
-		return !sentCommands.isEmpty()
+		return sentCommands.isNotEmpty()
 	}
 
 	private fun findAndRemoveSentCommand(seq: Long): SentCommand? {

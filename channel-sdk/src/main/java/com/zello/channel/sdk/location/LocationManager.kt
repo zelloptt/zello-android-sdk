@@ -129,7 +129,7 @@ internal class LocationManagerImpl(context: Context,
 
 }
 
-fun android.location.Location.overlaps(other: android.location.Location): Boolean {
+private fun android.location.Location.overlaps(other: android.location.Location): Boolean {
 	val distance = distanceTo(other)
 	return (distance <= min(accuracy, other.accuracy))
 }
