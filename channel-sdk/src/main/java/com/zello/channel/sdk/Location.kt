@@ -27,7 +27,7 @@ data class Location internal constructor(val latitude: Double, val longitude: Do
 	}
 
 	companion object {
-		fun fromLocation(platformLocation: android.location.Location): Location {
+		internal fun fromLocation(platformLocation: android.location.Location): Location {
 			return Location(platformLocation.latitude, platformLocation.longitude, platformLocation.accuracy.toDouble())
 		}
 	}

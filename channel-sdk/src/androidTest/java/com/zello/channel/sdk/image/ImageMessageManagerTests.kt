@@ -3,7 +3,7 @@ package com.zello.channel.sdk.image
 import android.graphics.Bitmap
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.zello.channel.sdk.ImageInfo
-import com.zello.channel.sdk.SentImageCallback
+import com.zello.channel.sdk.InvalidImageMessageError
 import com.zello.channel.sdk.TestTransport
 import com.zello.channel.sdk.platform.hexString
 import com.zello.channel.sdk.platform.resizedToMaxDimensions
@@ -35,8 +35,20 @@ class ImageMessageManagerTests {
 			override fun onImageMessage(message: ImageInfo) {
 				receivedImageMessage = message
 			}
+
+			override fun onInvalidImageMessage(error: InvalidImageMessageError) { }
 		}
 		manager = ImageMessageManagerImpl(listener, backgroundScope = coroutineScope, mainThreadDispatcher = immediateExecutor.asCoroutineDispatcher(), incomingImageTimeout = incomingImageTimeout)
+	}
+
+	@Test
+	fun testIsTypeValid() {
+		runBlocking {
+			setup(this)
+
+			assertTrue(manager.isTypeValid("jpeg"))
+			assertFalse(manager.isTypeValid("png"))
+		}
 	}
 
 	@Test
@@ -51,7 +63,7 @@ class ImageMessageManagerTests {
 			val thumbnailByteStream = ByteArrayOutputStream()
 			expectedThumbnail.compress(Bitmap.CompressFormat.JPEG, 90, thumbnailByteStream)
 			var continuationCalled = false
-			manager.sendImage(image, transport, continuation = SentImageCallback { imageId, error ->
+			manager.sendImage(image, transport, continuation = { imageId, error ->
 				continuationCalled = true
 				assertNull(error)
 				assertEquals(12345, imageId)
@@ -96,7 +108,7 @@ class ImageMessageManagerTests {
 			val thumbnailByteStream = ByteArrayOutputStream()
 			expectedThumbnail.compress(Bitmap.CompressFormat.JPEG, 90, thumbnailByteStream)
 			var continuationCalled = false
-			manager.sendImage(image, transport, recipient = "bogusRecipient", continuation = SentImageCallback { imageId, error ->
+			manager.sendImage(image, transport, recipient = "bogusRecipient", continuation = { imageId, error ->
 				continuationCalled = true
 				assertNull(error)
 				assertEquals(12345, imageId)
@@ -137,11 +149,11 @@ class ImageMessageManagerTests {
 
 			val image = TestImageUtils.createRedBitmap(100, 120)
 			var continuationCalled = false
-			manager.sendImage(image, transport, continuation = SentImageCallback { imageId, error ->
+			manager.sendImage(image, transport, continuation = { imageId, error ->
 				continuationCalled = true
 				assertEquals(0, imageId)
 				assertNotNull(error)
-				if (error == null) { return@SentImageCallback }
+				if (error == null) { return@sendImage }
 				assertEquals("Test error message", error.errorMessage)
 			})
 			yield()

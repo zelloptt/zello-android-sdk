@@ -7,8 +7,8 @@ package com.zello.channel.sdk
  * You will need to provide an object conforming to the [VoiceSource] interface. When the stream has
  * been opened to the channels server, your voice source object will receive a callback message
  * telling it that the system is ready for your audio stream to begin. The outgoing voice stream
- * will remain active until you close it by calling [stop] on either the [OutgoingVoiceStream] or the
- * [VoiceSink] provided to your voice source object.
+ * will remain active until you close it by calling `stop` on either the [OutgoingVoiceStream][OutgoingVoiceStream.stop] or the
+ * [VoiceSink][VoiceSink.stop] provided to your voice source object.
  *
  * @property source Object that provides audio.
  *

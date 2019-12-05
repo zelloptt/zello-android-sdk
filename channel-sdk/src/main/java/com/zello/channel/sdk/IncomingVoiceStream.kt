@@ -20,8 +20,7 @@ abstract class IncomingVoiceStream internal constructor(
 	private var finished = false // The message was ended by the sender or timed out
 	private var lastActiveTime: Long = 0 // Time when the last incoming packet was seen
 
-	internal var packetDuration: Int = 0
-		private set
+	private var packetDuration: Int = 0
 
 	/**
 	 * The name of the channel this stream is connected to
@@ -169,7 +168,7 @@ abstract class IncomingVoiceStream internal constructor(
 
 	// Any thread
 	// Packet data may be missing which may be used as a signal to compensate for a lost packet
-	internal fun onData(packetId: Int, packetData: ByteArray?) {
+	internal fun onData(@Suppress("unused_parameter") packetId: Int, packetData: ByteArray?) {
 		synchronized(dataSync) {
 			if (closed) return
 			lastActiveTime = Utils.getTickCount()

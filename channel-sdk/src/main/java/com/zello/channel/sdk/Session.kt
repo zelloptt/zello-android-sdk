@@ -14,6 +14,7 @@ import com.zello.channel.sdk.transport.TransportEvents
 import com.zello.channel.sdk.transport.TransportReadAck
 import org.json.JSONObject
 import java.util.EnumSet
+import kotlin.math.min
 
 /**
  * Main SDK object that manages the outgoing and incoming messages
@@ -51,6 +52,10 @@ class Session internal constructor(
 	private val imageMessageManager = context.createImageMessageManager(object : ImageMessageManagerListener {
 			override fun onImageMessage(message: ImageInfo) {
 				sessionListener?.onImageMessage(this@Session, message)
+			}
+
+			override fun onInvalidImageMessage(error: InvalidImageMessageError) {
+				sessionListener?.onError(this@Session, error)
 			}
 		})
 
@@ -118,6 +123,7 @@ class Session internal constructor(
         /**
          * Set the username and password used to connect to the server and channel
          */
+		@Suppress("unused") // It's used by SDK consumers
         fun setUsername(username: String?, password: String?): Builder {
             this.username = username
             this.password = password
@@ -132,6 +138,7 @@ class Session internal constructor(
 		 *
 		 * @param logger the SessionLogger implementation to use for this session
 		 */
+		@Suppress("unused") // It's used by SDK consumers
 		fun setLogger(logger: SessionLogger): Builder {
 			this.logger = logger
 			return this
@@ -164,7 +171,8 @@ class Session internal constructor(
      * Close the open connection.
      * Must be called on the main UI thread.
      */
-    fun disconnect() {
+	@Suppress("MemberVisibilityCanBePrivate") // Part of public API
+	fun disconnect() {
         if (!initialized) return
         if (performDisconnect()) {
             sessionListener?.onDisconnected(this)
@@ -172,7 +180,7 @@ class Session internal constructor(
     }
 
 
-	/// NEW API
+	// NEW API
 	/**
 	 * Sends a text message to the channel
 	 *
@@ -185,7 +193,7 @@ class Session internal constructor(
 	}
 
 	/**
-	 * Sends a text message to the channel
+	 * Sends a text message to a specific user in the channel
 	 *
 	 * @param message the message to send
 	 * @param recipient The username for the user to send the message to. Other users in the channel
@@ -212,16 +220,41 @@ class Session internal constructor(
 	 * @return `true` if the image metadata was sent successfully. `false` if an error was encountered
 	 * before the image metadata could be sent.
 	 */
-	fun sendImage(image: Bitmap, continuation: SentImageCallback?) {
+	fun sendImage(image: Bitmap) {
 		if (!initialized) return
 		val transport = transport ?: return
-		imageMessageManager.sendImage(image, transport, continuation = continuation)
+		imageMessageManager.sendImage(image, transport, continuation = { _, error ->
+			if (error != null) {
+				sessionListener?.onError(this, error)
+			}
+		})
 	}
 
-	fun sendImage(image: Bitmap, recipient: String, continuation: SentImageCallback?) {
+	/**
+	 * Sends an image message to a specific user in the channel
+	 *
+	 * The Zello channels client will resize images that are larger than 1,280x1,280 to have a maximum
+	 * height or width of 1,280 pixels. A 90x90 thumbnail will also be generated and sent before the
+	 * full-sized image data is sent.
+	 *
+	 * If an error is encountered while sending the image, the `SessionListener` method `onError()` will
+	 * be called with an error describing what went wrong.
+	 *
+	 * @param image the image to send
+	 * @param recipient The username for the use to send the message to. Other users in the channel
+	 * won't receive the message.
+	 *
+	 * @return `true` if the image metadata was sent successfully. `false` if an error was encountered
+	 * before the image metadata could be sent.
+	 */
+	fun sendImage(image: Bitmap, recipient: String) {
 		if (!initialized) return
 		val transport = transport ?: return
-		imageMessageManager.sendImage(image, transport, recipient = recipient, continuation = continuation)
+		imageMessageManager.sendImage(image, transport, recipient = recipient, continuation = { _, error ->
+			if (error != null) {
+				sessionListener?.onError(this, error)
+			}
+		})
 	}
 
 	/**
@@ -230,6 +263,7 @@ class Session internal constructor(
 	 * If not set, Android's default `Criteria` is used. Altitude, speed, and bearing are not sent
 	 * to the channel. If a Criteria is set that has those features enabled, they will be ignored.
 	 */
+	@Suppress("MemberVisibilityCanBePrivate") // Part of public API
 	var locationCriteria: Criteria = Criteria()
 		set(newCriteria) {
 			newCriteria.isBearingRequired = false
@@ -257,6 +291,18 @@ class Session internal constructor(
 		return true
 	}
 
+	/**
+	 * Sends the user's current location to a specific user in the channel
+	 *
+	 * When the user's location is found, `continuation` is also called with the location so you can
+	 * update your app to reflect the location they are reporting to the channel.
+	 *
+	 * @param recipient The username for the user to send the message to. Other users in the channel
+	 * won't receive the message.
+	 * @param continuation Called after the current location is found and reverse geocoding is performed.
+	 * If the location was found, it reports the location as well as a reverse geocoded description
+	 * if available. If an error was encountered acquiring the location, it reports the error.
+	 */
 	fun sendLocation(recipient: String, continuation: SentLocationCallback?): Boolean {
 		if (!initialized) return false
 		val transport = transport ?: return false
@@ -463,7 +509,7 @@ class Session internal constructor(
         val adjustment = Math.random() + 0.5
         val delay = nextReconnectDelay * adjustment
         // Exponential backoff, capped at one minute
-        nextReconnectDelay = Math.min(nextReconnectDelay * 2.0, 60.0)
+        nextReconnectDelay = min(nextReconnectDelay * 2.0, 60.0)
         context.runOnUiThread(Runnable {
             performConnect()
         }, (delay * 1000).toLong())
@@ -532,23 +578,46 @@ class Session internal constructor(
 	}
 
 	private fun handleImageMessage(json: JSONObject) {
-		// TODO: Fix invalid format handling
+		val absurdDimension = 3000 // Don't allow width or height greater than this
+
 		val sender = json.optString(Command.keyFrom)
-		val imageId = json.optInt(Command.keyMessageId)
-		if (imageId == null) {
-			// TODO: Check for missing image id
+		if (!json.has(Command.keyMessageId)) {
+			val error = InvalidMessageFormatError(Command.eventOnImageMessage, Command.keyMessageId, json, "Missing image id")
+			sessionListener?.onError(this, error)
 			return
 		}
-		val compressionType = json.optString(Command.keyType)
-		// TODO: Check for missing or invalid image id
+		val imageId = json.optInt(Command.keyMessageId)
+		val compressionType = json.optString(Command.keyType, null)
+		if (compressionType == null) {
+			val error = InvalidMessageFormatError(Command.eventOnImageMessage, Command.keyType, json, "Missing image type")
+			sessionListener?.onError(this, error)
+			return
+		}
+		if (!imageMessageManager.isTypeValid(compressionType)) {
+			val error = InvalidMessageFormatError(Command.eventOnImageMessage, Command.keyType, json, "Invalid image type '$compressionType'")
+			sessionListener?.onError(this, error)
+			return
+		}
+		if (!json.has(Command.keyImageHeight)) {
+			val error = InvalidMessageFormatError(Command.eventOnImageMessage, Command.keyImageHeight, json, "Missing image height")
+			sessionListener?.onError(this, error)
+			return
+		}
 		val height = json.optInt(Command.keyImageHeight)
-		if (height == null) {
-			// TODO: Check for missing or invalid image height
+		if (height < 1 || height > absurdDimension) {
+			val error = InvalidMessageFormatError(Command.eventOnImageMessage, Command.keyImageHeight, json, "Height $height out of allowed range")
+			sessionListener?.onError(this, error)
+			return
+		}
+		if (!json.has(Command.keyImageWidth)) {
+			val error = InvalidMessageFormatError(Command.eventOnImageMessage, Command.keyImageWidth, json, "Missing image width")
+			sessionListener?.onError(this, error)
 			return
 		}
 		val width = json.optInt(Command.keyImageWidth)
-		if (width == null) {
-			// TODO: Check for missing or invalid image width
+		if (width < 1 || width > absurdDimension) {
+			val error = InvalidMessageFormatError(Command.eventOnImageMessage, Command.keyImageWidth, json, "Width $width out of allowed range")
+			sessionListener?.onError(this, error)
 			return
 		}
 

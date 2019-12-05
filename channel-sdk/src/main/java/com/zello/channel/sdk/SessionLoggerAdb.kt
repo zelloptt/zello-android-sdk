@@ -4,6 +4,8 @@ import com.zello.channel.sdk.platform.Utils
 
 /**
  * A simple logger implementation that writes the messages to the ADB log.
+ *
+ * @property tag the tag to log under
  */
 class SessionLoggerAdb(val tag: String) : SessionLogger {
 
