@@ -3,6 +3,7 @@ apply plugin: 'kotlin-android'
 apply plugin: 'kotlin-android-extensions'
 apply plugin: 'org.jetbrains.dokka'
 apply plugin: 'maven-publish'
+apply plugin: 'com.jfrog.bintray'
 
 android {
 	compileSdkVersion 27
@@ -52,14 +53,13 @@ android {
 		}
 	}
 
-	// TODO: Update for correct publishing to public Maven repository for final product
 	publishing {
 		publications {
 			channelsSdk(MavenPublication) {
 				groupId 'com.zello'
 				artifactId 'zello-channel-sdk'
 				version '0.5.0'
-				artifact "$buildDir/outputs/aar/debug/zello-${archivesBaseName}.aar"
+				artifact "$buildDir/outputs/aar/release/zello-${archivesBaseName}.aar"
 
 				pom.withXml {
 					def dependenciesNode = asNode().appendNode('dependencies')
@@ -73,8 +73,33 @@ android {
 			}
 		}
 
-		repositories {
-			mavenLocal()
+		// Uncomment mavenLocal definition for development
+//		repositories {
+//			mavenLocal()
+//		}
+	}
+
+	Properties localProperties = new Properties()
+	localProperties.load(project.rootProject.file('local.properties').newDataInputStream())
+	def bintrayUser = localProperties.getProperty('bintray.user')
+	def bintrayApiKey = localProperties.getProperty('bintray.apikey')
+
+	bintray {
+		user = bintrayUser
+		key = bintrayApiKey
+
+		dryRun = false
+		publish = false
+		override = true
+
+		pkg {
+			repo = 'zello-channel-sdk'
+			name = 'zello-channel-sdk'
+			publications = ['channelsSdk']
+
+			version {
+				name = '0.5.0'
+			}
 		}
 	}
 }
