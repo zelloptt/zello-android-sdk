@@ -11,7 +11,7 @@ android {
 		minSdkVersion 15
 		targetSdkVersion 27
 		versionCode 1
-		versionName "1.0"
+		versionName "0.5.0"
 		testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 	}
 	buildTypes {
@@ -67,7 +67,7 @@ android {
 			channelsSdk(MavenPublication) {
 				groupId 'com.zello'
 				artifactId 'zello-channel-sdk'
-				version '0.5.0'
+				version android.defaultConfig.versionName
 				// Change release to debug below for development
 				artifact "$buildDir/outputs/aar/release/zello-${archivesBaseName}.aar"
 				artifact sourcesJar
@@ -110,7 +110,7 @@ android {
 			publications = ['channelsSdk']
 
 			version {
-				name = '0.5.0'
+				name = android.defaultConfig.versionName
 			}
 		}
 	}
