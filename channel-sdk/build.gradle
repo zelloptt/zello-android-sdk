@@ -53,13 +53,25 @@ android {
 		}
 	}
 
+	task sourcesJar(type: Jar) {
+		classifier = 'sources'
+		from android.sourceSets.main.java.srcDirs
+	}
+	task javadocJar(type: Jar, dependsOn: dokka) {
+		classifier = 'javadoc'
+		from dokka.outputDirectory
+	}
+
 	publishing {
 		publications {
 			channelsSdk(MavenPublication) {
 				groupId 'com.zello'
 				artifactId 'zello-channel-sdk'
 				version '0.5.0'
+				// Change release to debug below for development
 				artifact "$buildDir/outputs/aar/release/zello-${archivesBaseName}.aar"
+				artifact sourcesJar
+				artifact javadocJar
 
 				pom.withXml {
 					def dependenciesNode = asNode().appendNode('dependencies')

@@ -44,6 +44,7 @@
 -keep public enum com.zello.channel.sdk.SessionConnectError { *; }
 -keep public enum com.zello.channel.sdk.SessionConnectError$Code { *; }
 -keep public class com.zello.channel.sdk.SessionListener { *; }
+-keep public class com.zello.channel.sdk.SessionListener$DefaultImpls { *; }
 -keep public class com.zello.channel.sdk.SessionLogger { *; }
 -keep public class com.zello.channel.sdk.SessionLoggerAdb { *; }
 -keep public class com.zello.channel.sdk.SessionLoggerNull { *; }
