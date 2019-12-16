@@ -23,18 +23,28 @@
 -keep public class * extends android.content.BroadcastReceiver
 -keep public class com.zello.channel.sdk.BuildConfig { *; }
 
+-keep public enum com.zello.channel.sdk.ChannelFeature { *; }
+-keep public class com.zello.channel.sdk.ImageInfo { *; }
 -keep public class com.zello.channel.sdk.IncomingVoiceConfiguration { *; }
 -keep public class com.zello.channel.sdk.IncomingVoiceStream { *; }
 -keep public class com.zello.channel.sdk.IncomingVoiceStreamInfo { *; }
+-keep public class com.zello.channel.sdk.InformationalError { *; }
+-keep public class com.zello.channel.sdk.InvalidImageMessageError { *; }
+-keep public class com.zello.channel.sdk.InvalidMessageFormatError { *; }
+-keep public class com.zello.channel.sdk.Location { *; }
 -keep public class com.zello.channel.sdk.OutgoingVoiceConfiguration { *; }
 -keep public class com.zello.channel.sdk.OutgoingVoiceStream { *; }
 -keep public enum com.zello.channel.sdk.OutgoingVoiceStreamError { *; }
 -keep public enum com.zello.channel.sdk.ReconnectReason { *; }
+-keep public class com.zello.channel.sdk.SendImageError { *; }
+-keep public class com.zello.channel.sdk.SendLocationError { *; }
+-keep public class com.zello.channel.sdk.SentLocationCallback { *; }
 -keep public class com.zello.channel.sdk.Session { *; }
 -keep public class com.zello.channel.sdk.Session$Builder { *; }
 -keep public enum com.zello.channel.sdk.SessionConnectError { *; }
 -keep public enum com.zello.channel.sdk.SessionConnectError$Code { *; }
 -keep public class com.zello.channel.sdk.SessionListener { *; }
+-keep public class com.zello.channel.sdk.SessionListener$DefaultImpls { *; }
 -keep public class com.zello.channel.sdk.SessionLogger { *; }
 -keep public class com.zello.channel.sdk.SessionLoggerAdb { *; }
 -keep public class com.zello.channel.sdk.SessionLoggerNull { *; }
