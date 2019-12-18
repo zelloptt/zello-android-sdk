@@ -4,7 +4,7 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Handler
-import android.support.v4.content.ContextCompat
+import androidx.core.content.ContextCompat
 import com.zello.channel.sdk.image.ImageMessageManager
 import com.zello.channel.sdk.image.ImageMessageManagerImpl
 import com.zello.channel.sdk.image.ImageMessageManagerListener

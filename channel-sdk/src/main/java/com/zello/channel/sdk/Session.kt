@@ -571,7 +571,7 @@ class Session internal constructor(
 			sessionListener?.onError(this, error)
 			return
 		}
-		val address = json.optString(Command.keyFormattedAddress, null)
+		val address = if (json.has(Command.keyFormattedAddress)) { json.getString(Command.keyFormattedAddress) } else { null }
 
 		val location = Location(latitude, longitude, accuracy, address)
 		sessionListener?.onLocationMessage(this, sender, location)
@@ -587,12 +587,12 @@ class Session internal constructor(
 			return
 		}
 		val imageId = json.optInt(Command.keyMessageId)
-		val compressionType = json.optString(Command.keyType, null)
-		if (compressionType == null) {
+		if (!json.has(Command.keyType)) {
 			val error = InvalidMessageFormatError(Command.eventOnImageMessage, Command.keyType, json, "Missing image type")
 			sessionListener?.onError(this, error)
 			return
 		}
+		val compressionType = json.getString(Command.keyType)
 		if (!imageMessageManager.isTypeValid(compressionType)) {
 			val error = InvalidMessageFormatError(Command.eventOnImageMessage, Command.keyType, json, "Invalid image type '$compressionType'")
 			sessionListener?.onError(this, error)
@@ -671,7 +671,7 @@ class Session internal constructor(
         val sender = json.optString(Command.keyFrom)
         val channel = json.optString(Command.keyChannel)
         val config: IncomingVoiceConfiguration?
-        if (sender == null || channel == null) {
+        if (sender.isEmpty() || channel.isEmpty()) {
             sessionListener?.onConnectFailed(this, SessionConnectError.BAD_RESPONSE(json))
             return
         }

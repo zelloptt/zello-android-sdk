@@ -198,7 +198,7 @@ internal class TransportWebSockets(private val httpClientFactory: HttpClientFact
 	}
 
 	private fun processIncomingMessage(json: JSONObject) {
-		val command: String? = json.optString(Command.keyCommand, null)
+		val command: String? = if (json.has(Command.keyCommand)) json.getString(Command.keyCommand) else null
 		val seq: Long = json.optLong(Command.keySeq, -1)
 		if (command == null) {
 			val sentCommand = findAndRemoveSentCommand(seq) ?: return
