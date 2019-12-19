@@ -41,7 +41,7 @@
 -keep public class com.zello.channel.sdk.SentLocationCallback { *; }
 -keep public class com.zello.channel.sdk.Session { *; }
 -keep public class com.zello.channel.sdk.Session$Builder { *; }
--keep public enum com.zello.channel.sdk.SessionConnectError { *; }
+-keep public class com.zello.channel.sdk.SessionConnectError { *; }
 -keep public enum com.zello.channel.sdk.SessionConnectError$Code { *; }
 -keep public class com.zello.channel.sdk.SessionListener { *; }
 -keep public class com.zello.channel.sdk.SessionListener$DefaultImpls { *; }
