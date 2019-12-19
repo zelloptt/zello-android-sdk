@@ -49,7 +49,7 @@ internal abstract class Command protected constructor(transport: Transport, priv
 		if (success) {
 			succeeded = true
 		} else {
-			error = json.optString(keyError, null)
+			error = if (json.has(keyError)) json.getString(keyError) else null
 		}
 	}
 

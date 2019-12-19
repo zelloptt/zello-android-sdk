@@ -56,7 +56,7 @@ class ImageUtilsTests {
 		assertEquals("Decoded to wrong height", 100, decoded.height)
 
 		// Test with complex image that will require multiple passes
-		val fractalStream = javaClass.classLoader.getResourceAsStream("fractal_Wallpaper_011.jpg")
+		val fractalStream = javaClass.classLoader?.getResourceAsStream("fractal_Wallpaper_011.jpg")
 		val fractal = BitmapFactory.decodeStream(fractalStream)
 		assertNotNull("Failed to load test image", fractal)
 		val compressedFractal = fractal.compressedToJpeg(400000)

@@ -3,7 +3,7 @@ package com.zello.channel.sdk.image
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.SystemClock
-import android.support.annotation.MainThread
+import androidx.annotation.MainThread
 import com.zello.channel.sdk.ImageInfo
 import com.zello.channel.sdk.InvalidImageMessageError
 import com.zello.channel.sdk.SendImageError

@@ -1,6 +1,6 @@
 package com.zello.channel.sdk;
 
-import android.support.annotation.Nullable;
+import androidx.annotation.Nullable;
 
 /**
  * Used for callbacks from send location methods to report the location back to the caller.
