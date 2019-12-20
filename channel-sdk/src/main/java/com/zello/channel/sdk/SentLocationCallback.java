@@ -12,6 +12,6 @@ public interface SentLocationCallback {
 	 * @param location GPS coordinates and reverse geocoded address that was sent to the channel, or
 	 * `null` if an error occurred determining the user's location
 	 * @param error If location is `null`, this contains information about the error that occurred.
- 	 */
+	 */
 	void onLocationSent(@Nullable Location location, @Nullable SendLocationError error);
 }

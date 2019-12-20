@@ -19,6 +19,7 @@ import com.zello.channel.sdk.transport.TransportFactory
 internal interface SessionContext {
 
 	val transportFactory: TransportFactory
+
 	val locationManager: LocationManager
 
 	val hasLocationPermission: Boolean

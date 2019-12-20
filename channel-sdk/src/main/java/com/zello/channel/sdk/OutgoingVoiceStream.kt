@@ -23,17 +23,17 @@ abstract class OutgoingVoiceStream internal constructor(
 
 	/**
 	 * Called when message state changes
- 	 */
+	 */
 	protected abstract fun onStateChanged(state: VoiceStreamState)
 
 	/**
 	 * Called when the message fails to start
- 	 */
+	 */
 	protected abstract fun onError(error: OutgoingVoiceStreamError)
 
 	/**
 	 * Called when the message completely stops
- 	 */
+	 */
 	protected abstract fun onStopped()
 
 	// UI thread

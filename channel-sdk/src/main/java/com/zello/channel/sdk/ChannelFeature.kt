@@ -10,7 +10,7 @@ enum class ChannelFeature {
 	ImageMessages,
 	/**
 	 * The channel allows text messages
- 	 */
+	 */
 	TextMessages,
 	/**
 	 * The channel allows location messages

@@ -465,7 +465,7 @@ class SessionTests {
 		assertEquals("bogusRecipient", json.optString("for"))
 	}
 
-    //endregion
+	//endregion
 
 	//region Channel Features
 
