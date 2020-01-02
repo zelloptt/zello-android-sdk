@@ -92,7 +92,8 @@ internal class Audio private constructor(context: Context, val logger: SessionLo
 			}
 			var error: String? = null
 			try {
-				val ret = audioManager!!.requestAudioFocus(focusListener, playbackStreamType, focusMode)
+				// Still supporting Android pre-APILEVEL 26
+				@Suppress("DEPRECATION") val ret = audioManager!!.requestAudioFocus(focusListener, playbackStreamType, focusMode)
 				if (ret != android.media.AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
 					error = Integer.toString(ret)
 				}
@@ -110,7 +111,8 @@ internal class Audio private constructor(context: Context, val logger: SessionLo
 			focusMode = 0
 			var error: String? = null
 			try {
-				val ret = audioManager!!.abandonAudioFocus(focusListener)
+				// Still supporting Android pre-APILEVEL 26
+				@Suppress("DEPRECATION") val ret = audioManager!!.abandonAudioFocus(focusListener)
 				if (ret != android.media.AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
 					error = Integer.toString(ret)
 				}

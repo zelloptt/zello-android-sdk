@@ -55,6 +55,14 @@ interface SessionListener {
 	fun onSessionWillReconnect(session: Session, reason: ReconnectReason): Boolean = true
 
 	/**
+	 * Called when the channel's status changes. The listener can read channel properties from the
+	 * Session object.
+	 *
+	 * @param session the session wrapping the channel whose status has changed
+	 */
+	fun onChannelStatusUpdate(session: Session) { }
+
+	/**
 	 * Called if an outgoing stream closes with an error
 	 *
 	 * @param session the session containing the stream
@@ -136,4 +144,42 @@ interface SessionListener {
 	 */
 	fun onIncomingVoiceProgress(session: Session, stream: IncomingVoiceStream, positionMs: Int)
 
+	/**
+	 * This method is called when a text message is received from another user in the channel
+	 *
+	 * @param session the session that received a text message
+	 * @param sender the username of the user that sent the message
+	 * @param message the message that was received
+	 */
+	fun onTextMessage(session: Session, sender: String, message: String)
+
+	/**
+	 * This method is called when an image message is received from another user in the channel. It
+	 * is likely that this method will be called twice for each received image: once when the thumbnail
+	 * is received, and again when the full-sized image is received. The `imageInfo` object will
+	 * contain the same `imageId` value for both calls.
+	 *
+	 * @param session the session that received an image message
+	 * @param imageInfo the metadata and image that was received
+	 */
+	fun onImageMessage(session: Session, imageInfo: ImageInfo)
+
+	/**
+	 * This method is called when a location message is received from another user in the channel.
+	 *
+	 * @param session the session that received a location message
+	 * @param sender the username of the user that sent the message
+	 * @param location the location that was received
+	 */
+	fun onLocationMessage(session: Session, sender: String, location: Location)
+
+	/**
+	 * Called when a non-fatal error occurs
+	 *
+	 * @param session the session that encountered an error
+	 * @param error an object describing the error encountered. The error object's `errorMessage`
+	 * property has a human-readable message describing the error. Subclasses of `InformationalError`
+	 * may contain more information.
+	 */
+	fun onError(session: Session, error: InformationalError) { }
 }

@@ -6,8 +6,8 @@ import com.zello.channel.sdk.platform.Utils
  * Base class for voice streams between the Zello Channels SDK and the Zello Channels server
  */
 abstract class VoiceStream internal constructor(
-		protected val session: Session, protected val events: SessionListener?,
-		protected val context: SessionContext, protected var streamId: Int) {
+		internal val session: Session, internal val events: SessionListener?,
+		internal val context: SessionContext, internal var streamId: Int) {
 
 	/**
 	 * The name of the channel this stream is connected to

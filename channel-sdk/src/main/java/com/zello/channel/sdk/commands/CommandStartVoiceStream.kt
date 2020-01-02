@@ -9,7 +9,8 @@ internal abstract class CommandStartVoiceStream(
 		transport: Transport,
 		private val codec: String?,
 		private val codecHeader: ByteArray?,
-		private val packetDuration: Int) : Command(transport, true) {
+		private val packetDuration: Int,
+		private val recipient: String?) : Command(transport, true) {
 
 	abstract fun onSuccess(streamId: Int)
 
@@ -18,7 +19,7 @@ internal abstract class CommandStartVoiceStream(
 	override fun read(json: JSONObject) {
 		parseSimpleResponse(json)
 		if (succeeded) {
-			val streamId = json.optInt(Command.keyStreamId, -1)
+			val streamId = json.optInt(keyStreamId, -1)
 			if (streamId >= 0) {
 				onSuccess(streamId)
 				return
@@ -40,15 +41,18 @@ internal abstract class CommandStartVoiceStream(
 	}
 
 	override fun getCommandName(): String {
-		return Command.commandStartStream
+		return commandStartStream
 	}
 
 	override fun getCommandBody(): JSONObject {
 		val json = JSONObject()
-		json.put(Command.keyType, Command.valAudio)
-		json.put(Command.keyCodec, codec)
-		json.put(Command.keyCodecHeader, Utils.encodeBase64(codecHeader))
-		json.put(Command.keyPacketDuration, packetDuration)
+		json.put(keyType, valAudio)
+		json.put(keyCodec, codec)
+		json.put(keyCodecHeader, Utils.encodeBase64(codecHeader))
+		json.put(keyPacketDuration, packetDuration)
+		if (recipient != null) {
+			json.put(keyRecipient, recipient)
+		}
 		return json
 	}
 

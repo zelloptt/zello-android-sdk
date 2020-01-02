@@ -49,7 +49,7 @@ internal abstract class Command protected constructor(transport: Transport, priv
 		if (success) {
 			succeeded = true
 		} else {
-			error = json.optString(keyError, null)
+			error = if (json.has(keyError)) json.getString(keyError) else null
 		}
 	}
 
@@ -64,6 +64,7 @@ internal abstract class Command protected constructor(transport: Transport, priv
 		val keyCodec = "codec"
 		val keyCodecHeader = "codec_header"
 		val keyPacketDuration = "packet_duration"
+		val keyRecipient = "for"
 		val keyStreamId = "stream_id"
 		// TODO: Remove streamId key after server is fixed
 		// There's a server bug where the server sends streamId instead of stream_id in on_stream_stop events
@@ -75,6 +76,21 @@ internal abstract class Command protected constructor(transport: Transport, priv
 		val keyPassword = "password"
 		val keyChannel = "channel"
 		val keyFrom = "from"
+		val keyUsersOnline = "users_online"
+		val keyImagesSupported = "images_supported"
+		val keyTextingSupported = "texting_supported"
+		val keyLocationsSupported = "locations_supported"
+		val keyThumbnailLength = "thumbnail_content_length"
+		val keyImageLength = "content_length"
+		val keyImageWidth = "width"
+		val keyImageHeight = "height"
+		val keyImageId = "image_id"
+		val keyTextMessageBody = "text"
+		val keyMessageId = "message_id"
+		val keyLatitude = "latitude"
+		val keyLongitude = "longitude"
+		val keyAccuracy = "accuracy"
+		val keyFormattedAddress = "formatted_address"
 
 		val valAudio = "audio"
 
@@ -100,11 +116,16 @@ internal abstract class Command protected constructor(transport: Transport, priv
 		val commandLogon = "logon"
 		val commandStartStream = "start_stream"
 		val commandStopStream = "stop_stream"
+		val commandSendImage = "send_image"
+		val commandSendTextMessage = "send_text_message"
 
 		val eventOnChannelStatus = "on_channel_status"
 		val eventOnStreamStart = "on_stream_start"
 		val eventOnStreamStop = "on_stream_stop"
 		val eventOnError = "on_error"
+		val eventOnTextMessage = "on_text_message"
+		val eventOnImageMessage = "on_image"
+		val eventOnLocationMessage = "on_location"
 	}
 
 }

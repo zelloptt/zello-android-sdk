@@ -20,6 +20,9 @@ class SessionConnectError @JvmOverloads constructor(val code: Code, val info: Ma
 		 * Session was unable to connect for some other reason
 		 */
 		UNKNOWN {
+			/**
+			 * @suppress
+			 */
 			override fun toString(): String {
 				return "unknown error"
 			}
@@ -29,6 +32,9 @@ class SessionConnectError @JvmOverloads constructor(val code: Code, val info: Ma
 		 * The address the session tried to connect to does not point to a Zello channels server
 		 */
 		INVALID_ADDRESS {
+			/**
+			 * @suppress
+			 */
 			override fun toString(): String {
 				return "invalid address"
 			}
@@ -38,6 +44,9 @@ class SessionConnectError @JvmOverloads constructor(val code: Code, val info: Ma
 		 * The session was unable to open a websockets connection to the server
 		 */
 		CONNECT_FAILED {
+			/**
+			 * @suppress
+			 */
 			override fun toString(): String {
 				return "connect failed"
 			}
@@ -50,6 +59,9 @@ class SessionConnectError @JvmOverloads constructor(val code: Code, val info: Ma
 		 * [infoKeyResponse].
 		 */
 		BAD_RESPONSE {
+			/**
+			 * @suppress
+			 */
 			override fun toString(): String {
 				return "bad response"
 			}
@@ -59,6 +71,9 @@ class SessionConnectError @JvmOverloads constructor(val code: Code, val info: Ma
 		 * The connection attempt timed out with no response from the server
 		 */
 		NO_RESPONSE {
+			/**
+			 * @suppress
+			 */
 			override fun toString(): String {
 				return "no response"
 			}
@@ -68,12 +83,18 @@ class SessionConnectError @JvmOverloads constructor(val code: Code, val info: Ma
 		 * The authentication token, username, or password were invalid
 		 */
 		BAD_CREDENTIALS {
+			/**
+			 * @suppress
+			 */
 			override fun toString(): String {
 				return "bad credentials"
 			}
 		}
 	}
 
+	/**
+	 * @suppress
+	 */
 	override fun toString(): String {
 		return when (code) {
 			Code.BAD_RESPONSE -> {
@@ -90,6 +111,7 @@ class SessionConnectError @JvmOverloads constructor(val code: Code, val info: Ma
 		@JvmStatic internal val UNKNOWN = SessionConnectError(Code.UNKNOWN)
 		@JvmStatic internal val INVALID_ADDRESS = SessionConnectError(Code.INVALID_ADDRESS)
 		@JvmStatic internal val CONNECT_FAILED = SessionConnectError(Code.CONNECT_FAILED)
+		@Suppress("FunctionName")
 		@JvmStatic internal fun BAD_RESPONSE(response: JSONObject) = SessionConnectError(Code.BAD_RESPONSE, mapOf(Pair(infoKeyResponse, response)))
 		@JvmStatic internal val NO_RESPONSE = SessionConnectError(Code.NO_RESPONSE)
 		@JvmStatic internal val BAD_CREDENTIALS = SessionConnectError(Code.BAD_CREDENTIALS)

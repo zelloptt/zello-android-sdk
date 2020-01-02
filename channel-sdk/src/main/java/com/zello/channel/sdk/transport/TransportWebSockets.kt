@@ -4,6 +4,8 @@ import android.os.Handler
 import com.zello.channel.sdk.SessionConnectError
 import com.zello.channel.sdk.SessionConnectErrorException
 import com.zello.channel.sdk.commands.Command
+import com.zello.channel.sdk.platform.HandlerFactory
+import com.zello.channel.sdk.platform.HandlerFactoryImpl
 import com.zello.channel.sdk.platform.Utils
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -15,9 +17,9 @@ import org.json.JSONObject
 import java.lang.ref.WeakReference
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
-import java.util.concurrent.TimeUnit
 
-internal class TransportWebSockets : Transport, WebSocketListener() {
+internal class TransportWebSockets(private val httpClientFactory: HttpClientFactory = HttpClientFactoryImpl(),
+								   private val handlerFactory: HandlerFactory = HandlerFactoryImpl()) : Transport, WebSocketListener() {
 
 	private var events: TransportEvents? = null
 	private var handler: Handler? = null
@@ -36,10 +38,10 @@ internal class TransportWebSockets : Transport, WebSocketListener() {
 			throw SessionConnectErrorException(SessionConnectError.UNKNOWN)
 		}
 		this.events = events
-		handler = Handler(Handler.Callback { msg ->
+		handler = handlerFactory.handler(Handler.Callback { msg ->
 			when (msg.what) {
 				SOCKET_EVENT -> {
-					(msg.obj as TransportWebSockets.SocketEvent).run(this)
+					(msg.obj as SocketEvent).run(this)
 					true
 				}
 				else ->
@@ -49,7 +51,7 @@ internal class TransportWebSockets : Transport, WebSocketListener() {
 		val socket: WebSocket
 		val client: OkHttpClient
 		try {
-			client = OkHttpClient.Builder().connectTimeout(requestTimeoutSec, TimeUnit.SECONDS).writeTimeout(requestTimeoutSec, TimeUnit.SECONDS).readTimeout(requestTimeoutSec, TimeUnit.SECONDS).pingInterval(WS_PING_INTERVAL_SEC, TimeUnit.SECONDS).build()
+			client = httpClientFactory.client(requestTimeoutSec, WS_PING_INTERVAL_SEC)
 			val request = Request.Builder().url(address).build()
 			socket = client.newWebSocket(request, this)
 		} catch (e: IllegalStateException) {
@@ -103,6 +105,16 @@ internal class TransportWebSockets : Transport, WebSocketListener() {
 		hton.putInt(0)
 		System.arraycopy(data, 0, buffer, 9, data.size)
 		// Sadly, there's no way to pass a byte[] to a new or existing okio ByteString without copying the data
+		socket?.send(ByteString.of(buffer, 0, buffer.size))
+	}
+
+	override fun sendImageData(imageId: Int, tag: Int, data: ByteArray) {
+		val buffer = ByteArray(9 + data.size)
+		val hton = ByteBuffer.wrap(buffer, 0, 9).order(ByteOrder.BIG_ENDIAN)
+		hton.put(PACKET_TYPE_IMAGE)
+		hton.putInt(imageId)
+		hton.putInt(tag)
+		System.arraycopy(data, 0, buffer, 9, data.size)
 		socket?.send(ByteString.of(buffer, 0, buffer.size))
 	}
 
@@ -186,7 +198,7 @@ internal class TransportWebSockets : Transport, WebSocketListener() {
 	}
 
 	private fun processIncomingMessage(json: JSONObject) {
-		val command: String? = json.optString(Command.keyCommand, null)
+		val command: String? = if (json.has(Command.keyCommand)) json.getString(Command.keyCommand) else null
 		val seq: Long = json.optLong(Command.keySeq, -1)
 		if (command == null) {
 			val sentCommand = findAndRemoveSentCommand(seq) ?: return
@@ -209,14 +221,22 @@ internal class TransportWebSockets : Transport, WebSocketListener() {
 	}
 
 	private fun processIncomingMessage(bytes: ByteString) {
-		val type = bytes.getByte(0)
-		when (type) {
+		when (bytes.getByte(0)) {
 			PACKET_TYPE_STREAM -> if (bytes.size() > 9) {
 				val data = bytes.toByteArray()
 				val ntoh = ByteBuffer.wrap(data, 1, 8).order(ByteOrder.BIG_ENDIAN)
 				val streamId = ntoh.int
 				val packetId = ntoh.int
 				events?.onIncomingVoiceStreamData(streamId, packetId, data.copyOfRange(9, data.size))
+			}
+
+			PACKET_TYPE_IMAGE -> if (bytes.size() > 9) {
+				val data = bytes.toByteArray()
+				val ntoh = ByteBuffer.wrap(data, 1, 8).order(ByteOrder.BIG_ENDIAN)
+				val imageId = ntoh.int
+				val imageType = ntoh.int
+				val imageData = data.copyOfRange(9, data.size)
+				events?.onIncomingImageData(imageId, imageType, imageData)
 			}
 		}
 	}
@@ -233,7 +253,7 @@ internal class TransportWebSockets : Transport, WebSocketListener() {
 				++i
 			}
 		}
-		return !sentCommands.isEmpty()
+		return sentCommands.isNotEmpty()
 	}
 
 	private fun findAndRemoveSentCommand(seq: Long): SentCommand? {
@@ -277,6 +297,7 @@ internal class TransportWebSockets : Transport, WebSocketListener() {
 		private const val WS_PING_INTERVAL_SEC = 230L
 
 		private const val PACKET_TYPE_STREAM: Byte = 1
+		private const val PACKET_TYPE_IMAGE: Byte = 2
 	}
 
 	/**

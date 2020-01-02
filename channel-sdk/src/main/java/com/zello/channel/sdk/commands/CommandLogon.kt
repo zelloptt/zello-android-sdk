@@ -16,15 +16,14 @@ internal abstract class CommandLogon(
 	override fun read(json: JSONObject) {
 		parseSimpleResponse(json)
 		if (succeeded) {
-			onSuccess(json.optString(Command.keyRefreshToken))
+			onSuccess(json.optString(keyRefreshToken))
 		} else {
-			val error: SessionConnectError
-			when (this.error) {
+			val error = when (this.error) {
 				errorNotAuthorized, valInvalidPassword, valInvalidUsername -> {
-					error = SessionConnectError.BAD_CREDENTIALS
+					SessionConnectError.BAD_CREDENTIALS
 				}
 				else -> {
-					error = SessionConnectError.BAD_RESPONSE(json)
+					SessionConnectError.BAD_RESPONSE(json)
 				}
 			}
 			onFailure(error)
@@ -40,25 +39,25 @@ internal abstract class CommandLogon(
 	abstract fun onFailure(error: SessionConnectError)
 
 	override fun getCommandName(): String {
-		return Command.commandLogon
+		return commandLogon
 	}
 
 	override fun getCommandBody(): JSONObject {
 		val json = JSONObject()
 		// We need an auth token and/or a refresh token
 		if (authToken != null) {
-			json.put(Command.keyAuthToken, authToken)
+			json.put(keyAuthToken, authToken)
 		}
 		if (refreshToken != null) {
-			json.put(Command.keyRefreshToken, refreshToken)
+			json.put(keyRefreshToken, refreshToken)
 		}
 		if (username != null) {
-			json.put(Command.keyUsername, username)
+			json.put(keyUsername, username)
 		}
 		if (password != null) {
-			json.put(Command.keyPassword, password)
+			json.put(keyPassword, password)
 		}
-		json.put(Command.keyChannel, Utils.emptyIfNull(channel))
+		json.put(keyChannel, Utils.emptyIfNull(channel))
 		return json
 	}
 

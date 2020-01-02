@@ -45,4 +45,6 @@ internal interface Transport {
 	 * @param data Audio data
 	 */
 	fun sendVoiceStreamData(streamId: Int, data: ByteArray)
+
+	fun sendImageData(imageId: Int, tag: Int, data: ByteArray)
 }
