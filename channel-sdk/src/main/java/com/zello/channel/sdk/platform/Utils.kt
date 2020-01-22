@@ -34,7 +34,7 @@ internal class Utils {
 			var out: String? = null
 			if (data != null) {
 				try {
-					out = Base64.encodeToString(data, Base64.DEFAULT)
+					out = Base64.encodeToString(data, Base64.NO_WRAP)
 				} catch (ignore: Throwable) {
 				}
 
