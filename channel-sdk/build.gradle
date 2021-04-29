@@ -1,9 +1,10 @@
-apply plugin: 'com.android.library'
-apply plugin: 'kotlin-android'
-apply plugin: 'kotlin-android-extensions'
-apply plugin: 'org.jetbrains.dokka'
-apply plugin: 'maven-publish'
-apply plugin: 'com.jfrog.bintray'
+plugins {
+	id 'com.android.library'
+	id 'kotlin-android'
+	id 'org.jetbrains.dokka'
+	id 'maven-publish'
+	id 'signing'
+}
 
 android {
 	compileSdkVersion 29
@@ -11,7 +12,7 @@ android {
 		minSdkVersion 15
 		targetSdkVersion 29
 		versionCode 1
-		versionName "0.5.1"
+		versionName "0.5.2"
 		testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 	}
 	buildTypes {
@@ -34,7 +35,7 @@ android {
 		sourceCompatibility JavaVersion.VERSION_1_8
 		targetCompatibility JavaVersion.VERSION_1_8
 	}
-	task dokka(overwrite: true, type: org.jetbrains.dokka.gradle.DokkaAndroidTask) {
+	task sdkDocumentation(type: org.jetbrains.dokka.gradle.DokkaAndroidTask) {
 		outputFormat = 'html'
 		outputDirectory = "../javadoc"
 		includeNonPublic = false
@@ -54,64 +55,80 @@ android {
 	}
 
 	task sourcesJar(type: Jar) {
-		classifier = 'sources'
+		archiveClassifier = 'sources'
 		from android.sourceSets.main.java.srcDirs
 	}
-	task javadocJar(type: Jar, dependsOn: dokka) {
-		classifier = 'javadoc'
-		from dokka.outputDirectory
+	task javadocJar(type: Jar, dependsOn: sdkDocumentation) {
+		archiveClassifier = 'javadoc'
+		from sdkDocumentation.outputDirectory
 	}
 
-	publishing {
-		publications {
-			channelsSdk(MavenPublication) {
-				groupId 'com.zello'
-				artifactId 'zello-channel-sdk'
-				version android.defaultConfig.versionName
-				// Change release to debug below for development
-				artifact "$buildDir/outputs/aar/release/zello-${archivesBaseName}.aar"
-				artifact sourcesJar
-				artifact javadocJar
+	afterEvaluate {
+		publishing {
+			publications {
+				channelsSdk(MavenPublication) {
+					from components.release
+					artifact sourcesJar
+					artifact javadocJar
 
-				pom.withXml {
-					def dependenciesNode = asNode().appendNode('dependencies')
-					configurations.implementation.allDependencies.each { dependency ->
-						def dependencyNode = dependenciesNode.appendNode('dependency')
-						dependencyNode.appendNode('groupId', dependency.group)
-						dependencyNode.appendNode('artifactId', dependency.name)
-						dependencyNode.appendNode('version', dependency.version)
+					groupId 'com.zello'
+					artifactId 'zello-channel-sdk'
+					version android.defaultConfig.versionName
+
+					pom {
+						packaging = "aar"
+						name = "Zello Channels SDK"
+						description = "The Zello Channels SDK allows you to integrate Zello push-to-talk into your own application. The SDK communicates with a Zello server over a web socket connection using a JSON-based protocol, and offers a simple API to send and receive audio, images, and text over Zello channels. Supported features include: Send voice messages from the device microphone Play incoming voice messages through the device speaker Send voice messages from your own audio code, e.g. from a file Receive voice message data with your own audio code with optional pass-through to the device speaker Send and recieve text messages Send and receive images Send the device's current location, and receive location messages from other users The protocol specification is also available if you prefer to develop your own client in-house."
+						url = "https://github.com/zelloptt/zello-channel-api/"
+						licenses {
+							license {
+								name = "MIT License"
+								url = "http://www.opensource.org/licenses/mit-license.php"
+							}
+						}
+						developers {
+							developer {
+								name = "Greg Cooksey"
+								email = "greg@zello.com"
+								organization = "Zello"
+								organizationUrl = "https://zello.com/"
+							}
+						}
+						scm {
+							connection = "scm:git:git://github.com/zelloptt/zello-channel-api.git"
+							url = "https://github.com/zelloptt/zello-channel-api/tree/master"
+						}
+					}
+				}
+
+			}
+
+			repositories {
+				maven {
+					name = "sonatype"
+					url = defaultConfig.versionName.endsWith('SNAPSHOT') ? "https://s01.oss.sonatype.org/content/repositories/snapshots" : "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2"
+					credentials {
+						Properties properties = new Properties()
+						properties.load(project.rootProject.file('local.properties').newDataInputStream())
+
+						username = findProperty("ossrhUsername")
+						password = findProperty("ossrhPassword")
 					}
 				}
 			}
-		}
 
-		// Uncomment mavenLocal definition for development
+			// Uncomment mavenLocal definition for development
 //		repositories {
 //			mavenLocal()
 //		}
-	}
+		}
 
-	Properties localProperties = new Properties()
-	localProperties.load(project.rootProject.file('local.properties').newDataInputStream())
-	def bintrayUser = localProperties.getProperty('bintray.user')
-	def bintrayApiKey = localProperties.getProperty('bintray.apikey')
+		signing {
+			def signingKey = findProperty("ossrhSigningKey")
+			def password = findProperty("ossrhSigningPassword")
+			useInMemoryPgpKeys(signingKey, password)
 
-	bintray {
-		user = bintrayUser
-		key = bintrayApiKey
-
-		dryRun = false
-		publish = false
-		override = true
-
-		pkg {
-			repo = 'zello-channel-sdk'
-			name = 'zello-channel-sdk'
-			publications = ['channelsSdk']
-
-			version {
-				name = android.defaultConfig.versionName
-			}
+			sign publishing.publications.channelsSdk
 		}
 	}
 
@@ -120,13 +137,13 @@ android {
 }
 
 dependencies {
-	implementation 'androidx.appcompat:appcompat:1.1.0'
+	implementation 'androidx.appcompat:appcompat:1.2.0'
 	implementation 'com.squareup.okhttp3:okhttp:3.10.0'
 	implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
-	implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.3.2'
+	implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.3.8'
 	implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.3.2'
 	testImplementation 'junit:junit:4.12'
-	androidTestImplementation 'androidx.test.ext:junit:1.1.1'
-	androidTestImplementation 'androidx.test:runner:1.2.0'
-	androidTestImplementation 'androidx.test:rules:1.2.0'
+	androidTestImplementation 'androidx.test.ext:junit:1.1.2'
+	androidTestImplementation 'androidx.test:runner:1.3.0'
+	androidTestImplementation 'androidx.test:rules:1.3.0'
 }
