@@ -59,7 +59,7 @@ internal class LocationManagerImpl(context: Context,
 
 		// Request a new location fix from the system
 		val listener = object: LocationListener {
-			override fun onLocationChanged(gpsLocation: android.location.Location?) {
+			override fun onLocationChanged(gpsLocation: android.location.Location) {
 				if (gpsLocation == null) {
 					callback?.onLocationSent(null, SendLocationError(SendLocationError.NO_LOCATION))
 					return
@@ -71,11 +71,11 @@ internal class LocationManagerImpl(context: Context,
 				// Don't care
 			}
 
-			override fun onProviderEnabled(p0: String?) {
+			override fun onProviderEnabled(p0: String) {
 				// Don't care
 			}
 
-			override fun onProviderDisabled(p0: String?) {
+			override fun onProviderDisabled(p0: String) {
 				// Retry with a new provider
 				sendLocation(transport, criteria, recipient, callback)
 			}
