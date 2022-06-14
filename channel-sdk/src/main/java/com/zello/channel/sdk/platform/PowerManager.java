@@ -332,7 +332,7 @@ class PowerManager {
 				intent.putExtra(timerIntentCounter, timer.getCounter());
 				handler.sendMessageDelayed(handler.obtainMessage(messageTimer, intent), timeout);
 				// Schedule an alarm manager timer
-				PendingIntent pendingIntent = PendingIntent.getBroadcast(context, 0, intent, 0);
+				PendingIntent pendingIntent = PendingIntent.getBroadcast(context, 0, intent, PendingIntent.FLAG_IMMUTABLE);
 				setExactTimer(getAlarmManager(context), AlarmManager.ELAPSED_REALTIME_WAKEUP, SystemClock.elapsedRealtime() + timeout, pendingIntent);
 			}
 			// If thread pool for AsycTask is full, this throws java.util.concurrent.RejectedExecutionException
@@ -474,7 +474,7 @@ class PowerManager {
 			Handler h = getHandler();
 			h.sendMessageDelayed(h.obtainMessage(messageTimer, intent), timeout);
 			// Schedule an alarm manager timer
-			PendingIntent pendingIntent = PendingIntent.getBroadcast(_context, 0, intent, 0);
+			PendingIntent pendingIntent = PendingIntent.getBroadcast(_context, 0, intent, PendingIntent.FLAG_IMMUTABLE);
 			setExactTimer(getAlarmManager(_context), AlarmManager.ELAPSED_REALTIME_WAKEUP, SystemClock.elapsedRealtime() + timeout, pendingIntent);
 			return id;
 		}
@@ -499,7 +499,7 @@ class PowerManager {
 			// Schedule a regular handler-based timer
 			h.sendMessageDelayed(h.obtainMessage(messageTimer, intent), timeout);
 			// Schedule an alarm manager timer
-			PendingIntent pendingIntent = PendingIntent.getBroadcast(_context, 0, intent, 0);
+			PendingIntent pendingIntent = PendingIntent.getBroadcast(_context, 0, intent, PendingIntent.FLAG_IMMUTABLE);
 			setExactTimer(getAlarmManager(_context), AlarmManager.ELAPSED_REALTIME_WAKEUP, SystemClock.elapsedRealtime() + timeout, pendingIntent);
 			return id;
 		}
@@ -645,7 +645,7 @@ class PowerManager {
 	}
 
 	public void initialize(Context context) {
-		final android.os.PowerManager.WakeLock lock = ((android.os.PowerManager) context.getSystemService(Context.POWER_SERVICE)).newWakeLock(android.os.PowerManager.PARTIAL_WAKE_LOCK, "com.loudtalks.cpu");
+		final android.os.PowerManager.WakeLock lock = ((android.os.PowerManager) context.getSystemService(Context.POWER_SERVICE)).newWakeLock(android.os.PowerManager.PARTIAL_WAKE_LOCK, "com.loudtalks.cpu:service-wakelock");
 		lock.setReferenceCounted(false);
 		_cpuLock = lock;
 		try {
