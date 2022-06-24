@@ -14,6 +14,7 @@ import com.zello.channel.sdk.platform.SystemWrapperImpl
 import com.zello.channel.sdk.transport.Transport
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
@@ -29,6 +30,7 @@ internal interface LocationManager {
 	fun sendLocation(transport: Transport, criteria: Criteria, recipient: String?, callback: SentLocationCallback?)
 }
 
+@OptIn(DelicateCoroutinesApi::class)
 internal class LocationManagerImpl(context: Context,
 								   private val platformLocationManager: AndroidLocationManager,
 								   private val system: SystemWrapper = SystemWrapperImpl(),
@@ -59,23 +61,20 @@ internal class LocationManagerImpl(context: Context,
 
 		// Request a new location fix from the system
 		val listener = object: LocationListener {
-			override fun onLocationChanged(gpsLocation: android.location.Location?) {
-				if (gpsLocation == null) {
-					callback?.onLocationSent(null, SendLocationError(SendLocationError.NO_LOCATION))
-					return
-				}
+			override fun onLocationChanged(gpsLocation: android.location.Location) {
 				performReverseGeocoding(transport, gpsLocation, recipient, callback)
 			}
 
+			@Deprecated("Deprecated in Java")
 			override fun onStatusChanged(p0: String?, p1: Int, p2: Bundle?) {
 				// Don't care
 			}
 
-			override fun onProviderEnabled(p0: String?) {
+			override fun onProviderEnabled(p0: String) {
 				// Don't care
 			}
 
-			override fun onProviderDisabled(p0: String?) {
+			override fun onProviderDisabled(p0: String) {
 				// Retry with a new provider
 				sendLocation(transport, criteria, recipient, callback)
 			}
@@ -92,8 +91,8 @@ internal class LocationManagerImpl(context: Context,
 		}
 
 		// Read last geocode properties on main thread?
-		var lastGeocoded: android.location.Location? = null
-		var lastReversed: Location? = null
+		var lastGeocoded: android.location.Location?
+		var lastReversed: Location?
 		runBlocking(immediateMainThreadDispatcher) {
 			lastGeocoded = lastReverseGeocodedLocation
 			lastReversed = lastLocationWithReverseGeocode

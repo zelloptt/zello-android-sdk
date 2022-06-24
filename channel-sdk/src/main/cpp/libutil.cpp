@@ -1,6 +1,6 @@
 #include <jni.h>
 #include "contexts.h"
-#include "WaveFile.h"
+#include "wavefile.h"
 
 static CContexts<CWaveFile> g_WaveFiles;
 

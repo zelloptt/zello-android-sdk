@@ -18,16 +18,16 @@ public class RecorderMicrophone implements AudioSource {
 	private int _samplerate;
 	private int _bufferSampleCount; // Number of samples in every buffer returned from recorder
 	private ThreadEx _audioThread = null;
-	private Signal _audioStartedSignal = new Signal();
-	private Signal _audioResumedSignal = new Signal();
+	private final Signal _audioStartedSignal = new Signal();
+	private final Signal _audioResumedSignal = new Signal();
 	private int _audioLevel;
 	private boolean _levelMeter;
 	private AudioFx _audioFx;
 	private static final Signal _threadIsRunning = new Signal();
 	private volatile AudioSourceEvents _events;
-	private SessionLogger _logger;
+	private final SessionLogger _logger;
 
-	private Context _context;
+	private final Context _context;
 	private AudioTrack _audioTrack;
 	private short[] _playerBuffer;
 	private long _nextPowerWakeTime;
@@ -58,11 +58,11 @@ public class RecorderMicrophone implements AudioSource {
 				_samplerate = sampleRate;
 				_bufferSampleCount = bufferSampleCount;
 				_levelMeter = levelMeter;
-				if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN && (noiseSuppression || useAGC)) {
+				if (noiseSuppression || useAGC) {
 					audioFxCreate(noiseSuppression, useAGC);
 				}
 				_audioThread = new ThreadEx(threadName) {
-					Signal signal = getExitSignal();
+					final Signal signal = getExitSignal();
 
 					@Override
 					protected void run() {
@@ -206,8 +206,7 @@ public class RecorderMicrophone implements AudioSource {
 		AudioHelper.audioTrackRelease(audio);
 	}
 
-	@SuppressLint("InlinedApi")
-	@SuppressWarnings("deprecation")
+	@SuppressLint({"InlinedApi", "MissingPermission"})
 	private void pump(Signal exit, AudioSourceEvents events) {
 		for (int i = 0; !exit.isSetNoSync(); ++i) {
 			synchronized (_threadIsRunning) {
@@ -457,9 +456,6 @@ public class RecorderMicrophone implements AudioSource {
 	private void audioFxCreate(boolean noiseSuppression, boolean useAGC) {
 		try {
 			_audioFx = (AudioFx) Class.forName("com.loudtalks.client.ui.RecorderAudioFx16").newInstance();
-			if (_audioFx == null) {
-				return;
-			}
 			_audioFx.enableNoiseSuppression(noiseSuppression);
 			_audioFx.enableAGC(useAGC);
 		} catch (Throwable t) {

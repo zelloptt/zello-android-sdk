@@ -47,12 +47,10 @@ abstract class ThreadEx {
 				busyForced = busy;
 				exit.resetSync();
 				final ThreadEx t = this;
-				thread = new Thread(new Runnable() {
-					public void run() {
-						t.run();
-						busy = false;
-						busyForced = busy;
-					}
+				thread = new Thread(() -> {
+					t.run();
+					busy = false;
+					busyForced = busy;
 				}, name);
 				thread.start();
 				return true;

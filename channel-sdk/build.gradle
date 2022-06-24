@@ -7,12 +7,13 @@ plugins {
 }
 
 android {
-	compileSdkVersion 29
+	compileSdkVersion 31
 	defaultConfig {
-		minSdkVersion 15
-		targetSdkVersion 29
+		minSdkVersion 21
+		targetSdkVersion 31
+		ndkVersion = "24.0.8215888"
 		versionCode 1
-		versionName "0.5.2"
+		versionName "0.6.0"
 		testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 	}
 	buildTypes {
@@ -32,8 +33,13 @@ android {
 		}
 	}
 	compileOptions {
-		sourceCompatibility JavaVersion.VERSION_1_8
-		targetCompatibility JavaVersion.VERSION_1_8
+		sourceCompatibility JavaVersion.VERSION_11
+		targetCompatibility JavaVersion.VERSION_11
+	}
+	kotlinOptions {
+		jvmTarget = JavaVersion.VERSION_11
+		freeCompilerArgs += "-Xopt-in=kotlin.RequiresOptIn"
+		freeCompilerArgs += "-Xjvm-default=enable"
 	}
 	task sdkDocumentation(type: org.jetbrains.dokka.gradle.DokkaAndroidTask) {
 		outputFormat = 'html'
@@ -55,95 +61,98 @@ android {
 	}
 
 	task sourcesJar(type: Jar) {
-		archiveClassifier = 'sources'
+		archiveClassifier.set('sources')
 		from android.sourceSets.main.java.srcDirs
 	}
 	task javadocJar(type: Jar, dependsOn: sdkDocumentation) {
-		archiveClassifier = 'javadoc'
+		archiveClassifier.set('javadoc')
 		from sdkDocumentation.outputDirectory
-	}
-
-	afterEvaluate {
-		publishing {
-			publications {
-				channelsSdk(MavenPublication) {
-					from components.release
-					artifact sourcesJar
-					artifact javadocJar
-
-					groupId 'com.zello'
-					artifactId 'zello-channel-sdk'
-					version android.defaultConfig.versionName
-
-					pom {
-						packaging = "aar"
-						name = "Zello Channels SDK"
-						description = "The Zello Channels SDK allows you to integrate Zello push-to-talk into your own application. The SDK communicates with a Zello server over a web socket connection using a JSON-based protocol, and offers a simple API to send and receive audio, images, and text over Zello channels. Supported features include: Send voice messages from the device microphone Play incoming voice messages through the device speaker Send voice messages from your own audio code, e.g. from a file Receive voice message data with your own audio code with optional pass-through to the device speaker Send and recieve text messages Send and receive images Send the device's current location, and receive location messages from other users The protocol specification is also available if you prefer to develop your own client in-house."
-						url = "https://github.com/zelloptt/zello-channel-api/"
-						licenses {
-							license {
-								name = "MIT License"
-								url = "http://www.opensource.org/licenses/mit-license.php"
-							}
-						}
-						developers {
-							developer {
-								name = "Greg Cooksey"
-								email = "greg@zello.com"
-								organization = "Zello"
-								organizationUrl = "https://zello.com/"
-							}
-						}
-						scm {
-							connection = "scm:git:git://github.com/zelloptt/zello-channel-api.git"
-							url = "https://github.com/zelloptt/zello-channel-api/tree/master"
-						}
-					}
-				}
-
-			}
-
-			repositories {
-				maven {
-					name = "sonatype"
-					url = defaultConfig.versionName.endsWith('SNAPSHOT') ? "https://s01.oss.sonatype.org/content/repositories/snapshots" : "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2"
-					credentials {
-						Properties properties = new Properties()
-						properties.load(project.rootProject.file('local.properties').newDataInputStream())
-
-						username = findProperty("ossrhUsername")
-						password = findProperty("ossrhPassword")
-					}
-				}
-			}
-
-			// Uncomment mavenLocal definition for development
-//		repositories {
-//			mavenLocal()
-//		}
-		}
-
-		signing {
-			def signingKey = findProperty("ossrhSigningKey")
-			def password = findProperty("ossrhSigningPassword")
-			useInMemoryPgpKeys(signingKey, password)
-
-			sign publishing.publications.channelsSdk
-		}
 	}
 
 	// Library for testing
 	useLibrary 'android.test.mock'
+	buildToolsVersion '32.0.0'
+}
+
+afterEvaluate {
+	publishing {
+		publications {
+			channelsSdk(MavenPublication) {
+			from components.release
+				artifact sourcesJar
+				artifact javadocJar
+
+				groupId 'com.zello'
+				artifactId 'zello-channel-sdk'
+				version android.defaultConfig.versionName
+
+				pom {
+					packaging = "aar"
+					name = "Zello Channels SDK"
+					description = "The Zello Channels SDK allows you to integrate Zello push-to-talk into your own application. The SDK communicates with a Zello server over a web socket connection using a JSON-based protocol, and offers a simple API to send and receive audio, images, and text over Zello channels. Supported features include: Send voice messages from the device microphone Play incoming voice messages through the device speaker Send voice messages from your own audio code, e.g. from a file Receive voice message data with your own audio code with optional pass-through to the device speaker Send and recieve text messages Send and receive images Send the device's current location, and receive location messages from other users The protocol specification is also available if you prefer to develop your own client in-house."
+					url = "https://github.com/zelloptt/zello-channel-api/"
+					licenses {
+						license {
+							name = "MIT License"
+							url = "http://www.opensource.org/licenses/mit-license.php"
+						}
+					}
+					developers {
+						developer {
+							name = "Greg Cooksey"
+							email = "greg@zello.com"
+							organization = "Zello"
+							organizationUrl = "https://zello.com/"
+						}
+					}
+					scm {
+						connection = "scm:git:git://github.com/zelloptt/zello-channel-api.git"
+						url = "https://github.com/zelloptt/zello-channel-api/tree/master"
+					}
+				}
+			}
+
+		}
+
+	repositories {
+		maven {
+			name = "sonatype"
+			// Check if the version name includes the SNAPSHOT suffix, i.e. "0.6.0 SNAPSHOT"
+			url = android.defaultConfig.versionName.endsWith('SNAPSHOT') ? "https://s01.oss.sonatype.org/content/repositories/snapshots" : "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2"
+			credentials {
+				Properties properties = new Properties()
+				properties.load(project.rootProject.file('local.properties').newDataInputStream())
+
+				username = findProperty("ossrhUsername")
+				password = findProperty("ossrhPassword")
+			}
+		}
+	}
+
+		// Uncomment mavenLocal definition for development
+//		repositories {
+//			mavenLocal()
+//		}
+	}
+
+
+	signing {
+		def signingKey = findProperty("ossrhSigningKey")
+		def password = findProperty("ossrhSigningPassword")
+		useInMemoryPgpKeys(signingKey, password)
+
+		sign publishing.publications.channelsSdk
+	}
 }
 
 dependencies {
-	implementation 'androidx.appcompat:appcompat:1.2.0'
-	implementation 'com.squareup.okhttp3:okhttp:3.10.0'
+	implementation "androidx.appcompat:appcompat:1.4.2"
+	implementation "com.squareup.okhttp3:okhttp:4.9.3"
 	implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
-	implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.3.8'
-	implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.3.2'
-	testImplementation 'junit:junit:4.12'
-	androidTestImplementation 'androidx.test.ext:junit:1.1.2'
-	androidTestImplementation 'androidx.test:runner:1.3.0'
-	androidTestImplementation 'androidx.test:rules:1.3.0'
+	implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:$kotlin_coroutines_version"
+	implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:$kotlin_coroutines_version"
+	testImplementation "junit:junit:4.13.2"
+	androidTestImplementation "androidx.test.ext:junit:1.1.3"
+	androidTestImplementation "androidx.test:runner:1.4.0"
+	androidTestImplementation "androidx.test:rules:1.4.0"
 }

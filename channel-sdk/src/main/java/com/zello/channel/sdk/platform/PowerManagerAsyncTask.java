@@ -3,12 +3,14 @@ package com.zello.channel.sdk.platform;
 import android.annotation.SuppressLint;
 import android.os.AsyncTask;
 
+import androidx.annotation.NonNull;
+
 @SuppressWarnings("WeakerAccess")
 @SuppressLint("NewApi")
 abstract class PowerManagerAsyncTask extends AsyncTask<Object, Void, Void> {
 
-	private PowerManager _pm;
-	private String _name;
+	private final PowerManager _pm;
+	private final String _name;
 
 	abstract protected void run();
 
@@ -54,7 +56,7 @@ abstract class PowerManagerAsyncTask extends AsyncTask<Object, Void, Void> {
 	}
 
 	@Override
-	public String toString() {
+	public @NonNull String toString() {
 		return getType() + ": " + _name;
 	}
 

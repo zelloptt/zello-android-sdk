@@ -216,6 +216,7 @@ class PowerManager {
 		private final Map<Long, TimerCb> _timers;
 
 		public TimerHandler(Map<Long, TimerCb> timers) {
+			super(Looper.myLooper());
 			_timers = timers;
 		}
 
@@ -268,6 +269,7 @@ class PowerManager {
 		}
 	}
 
+	@SuppressWarnings("DoubleCheckedLocking")
 	public Handler getHandler() {
 		if (_handler == null) {
 			synchronized (_looper) {
@@ -332,7 +334,8 @@ class PowerManager {
 				intent.putExtra(timerIntentCounter, timer.getCounter());
 				handler.sendMessageDelayed(handler.obtainMessage(messageTimer, intent), timeout);
 				// Schedule an alarm manager timer
-				PendingIntent pendingIntent = PendingIntent.getBroadcast(context, 0, intent, 0);
+				PendingIntent pendingIntent = PendingIntent.getBroadcast(context, 0, intent,
+						Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0);
 				setExactTimer(getAlarmManager(context), AlarmManager.ELAPSED_REALTIME_WAKEUP, SystemClock.elapsedRealtime() + timeout, pendingIntent);
 			}
 			// If thread pool for AsycTask is full, this throws java.util.concurrent.RejectedExecutionException
@@ -399,11 +402,9 @@ class PowerManager {
 				}
 			}
 			if (_debug) {
-				boolean error = false;
 				synchronized (_map) {
 					LongInt l = _map.get(debug);
 					if (l == null) {
-						error = true;
 						l = new LongInt(-1);
 						_map.put(debug, l);
 					} else {
@@ -474,7 +475,8 @@ class PowerManager {
 			Handler h = getHandler();
 			h.sendMessageDelayed(h.obtainMessage(messageTimer, intent), timeout);
 			// Schedule an alarm manager timer
-			PendingIntent pendingIntent = PendingIntent.getBroadcast(_context, 0, intent, 0);
+			PendingIntent pendingIntent = PendingIntent.getBroadcast(_context, 0, intent,
+					Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0);
 			setExactTimer(getAlarmManager(_context), AlarmManager.ELAPSED_REALTIME_WAKEUP, SystemClock.elapsedRealtime() + timeout, pendingIntent);
 			return id;
 		}
@@ -499,7 +501,8 @@ class PowerManager {
 			// Schedule a regular handler-based timer
 			h.sendMessageDelayed(h.obtainMessage(messageTimer, intent), timeout);
 			// Schedule an alarm manager timer
-			PendingIntent pendingIntent = PendingIntent.getBroadcast(_context, 0, intent, 0);
+			PendingIntent pendingIntent = PendingIntent.getBroadcast(_context, 0, intent,
+					Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0);
 			setExactTimer(getAlarmManager(_context), AlarmManager.ELAPSED_REALTIME_WAKEUP, SystemClock.elapsedRealtime() + timeout, pendingIntent);
 			return id;
 		}
@@ -540,7 +543,8 @@ class PowerManager {
 		}
 		Intent intent = createTimerIntent(id);
 		try {
-			getAlarmManager(_context).cancel(PendingIntent.getBroadcast(_context, 0, intent, 0));
+			getAlarmManager(_context).cancel(PendingIntent.getBroadcast(_context, 0, intent,
+					Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0));
 		} catch (Throwable ignore) {
 			// SecurityException in Google Play reports
 		}
