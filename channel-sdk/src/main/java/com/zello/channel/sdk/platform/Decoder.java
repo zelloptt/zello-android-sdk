@@ -1,7 +1,7 @@
 package com.zello.channel.sdk.platform;
 
 /**
- * @exclude Not for public use
+ * Not for public use.
  */
 public interface Decoder extends AudioReceiverEvents {
 

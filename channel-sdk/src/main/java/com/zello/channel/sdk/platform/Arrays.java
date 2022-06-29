@@ -1,9 +1,9 @@
 package com.zello.channel.sdk.platform;
 
-import org.jetbrains.annotations.NotNull;
+import androidx.annotation.NonNull;
 
 /**
- * @exclude Not for public use
+ * Not for public use.
  */
 public class Arrays {
 
@@ -50,14 +50,14 @@ public class Arrays {
 		return null;
 	}
 
-	public static @NotNull short[] join(@NotNull short[] array1, @NotNull short[] array2) {
+	public static @NonNull short[] join(@NonNull short[] array1, @NonNull short[] array2) {
 		short[] buffer = Algorithms.createShortArray(array1.length + array2.length);
 		System.arraycopy(array1, 0, buffer, 0, array1.length);
 		System.arraycopy(array2, 0, buffer, array1.length, array2.length);
 		return buffer;
 	}
 
-	public static @NotNull short[] chunk(@NotNull short[] array, int offset, int length) {
+	public static @NonNull short[] chunk(@NonNull short[] array, int offset, int length) {
 		if (offset >= 0 && length >= 0 && offset + length <= array.length) {
 			short[] tmp = Algorithms.createShortArray(length);
 			System.arraycopy(array, offset, tmp, 0, length);
