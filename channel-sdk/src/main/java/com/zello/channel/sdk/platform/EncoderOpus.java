@@ -4,8 +4,10 @@ import android.content.Context;
 
 import com.zello.channel.sdk.SessionLogger;
 
+import androidx.annotation.NonNull;
+
 /**
- * @exclude Not for public use
+ * Not for public use.
  */
 @SuppressWarnings("WeakerAccess")
 public class EncoderOpus extends EncoderBase {
@@ -27,7 +29,7 @@ public class EncoderOpus extends EncoderBase {
 		private String _info;
 
 		@Override
-		public String toString() {
+		public @NonNull String toString() {
 			return _info;
 		}
 	}
@@ -50,7 +52,7 @@ public class EncoderOpus extends EncoderBase {
 
 	public EncoderOpus(Context context, SessionLogger logger, Object config) {
 		this(context, logger);
-		if (config != null && config instanceof Config) {
+		if (config instanceof Config) {
 			setFramesPerPacket(((Config) config)._framesPerPacket);
 			setFrameSize(((Config) config)._frameSize);
 			setSampleRate(((Config) config)._sampleRate);

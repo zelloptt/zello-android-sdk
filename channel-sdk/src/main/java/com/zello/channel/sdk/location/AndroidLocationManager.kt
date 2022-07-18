@@ -29,8 +29,9 @@ internal class AndroidLocationManagerImpl(private val locationManager: android.l
 	}
 
 	// We only call this method if the permission has been granted. Check is upstream.
+	@Suppress("DEPRECATION")
 	@SuppressLint("MissingPermission")
 	override fun requestSingleUpdate(provider: String, listener: LocationListener, looper: Looper?) {
-		locationManager.requestSingleUpdate(provider, listener, looper)
+		locationManager.requestSingleUpdate(provider, listener, looper ?: Looper.myLooper() ?: Looper.getMainLooper())
 	}
 }

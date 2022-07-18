@@ -28,11 +28,11 @@ import java.util.Locale;
  */
 
 /**
- * @exclude Not for public use
+ * Not for public use.
  */
 public class PlayerSpeaker implements AudioReceiver {
 
-	private Context _context;
+	private final Context _context;
 	private AudioReceiverEvents _events;
 	private int _streamType = android.media.AudioManager.STREAM_MUSIC;
 	private boolean _paused;
@@ -54,7 +54,7 @@ public class PlayerSpeaker implements AudioReceiver {
 	private boolean _muted;
 	private boolean _setVolume;
 	private boolean _flush;
-	private SessionLogger _logger;
+	private final SessionLogger _logger;
 
 	public PlayerSpeaker(Context context, SessionLogger logger, AudioReceiverEvents events) {
 		_context = context;

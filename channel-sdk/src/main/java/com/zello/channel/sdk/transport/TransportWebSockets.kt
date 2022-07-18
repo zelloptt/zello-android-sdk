@@ -13,6 +13,7 @@ import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import okio.ByteString
+import okio.ByteString.Companion.toByteString
 import org.json.JSONObject
 import java.lang.ref.WeakReference
 import java.nio.ByteBuffer
@@ -38,7 +39,7 @@ internal class TransportWebSockets(private val httpClientFactory: HttpClientFact
 			throw SessionConnectErrorException(SessionConnectError.UNKNOWN)
 		}
 		this.events = events
-		handler = handlerFactory.handler(Handler.Callback { msg ->
+		handler = handlerFactory.handler { msg ->
 			when (msg.what) {
 				SOCKET_EVENT -> {
 					(msg.obj as SocketEvent).run(this)
@@ -47,7 +48,7 @@ internal class TransportWebSockets(private val httpClientFactory: HttpClientFact
 				else ->
 					false
 			}
-		})
+		}
 		val socket: WebSocket
 		val client: OkHttpClient
 		try {
@@ -71,7 +72,7 @@ internal class TransportWebSockets(private val httpClientFactory: HttpClientFact
 		} catch (e: Throwable) {
 		}
 		socket = null
-		client?.dispatcher()?.executorService()?.shutdown()
+		client?.dispatcher?.executorService?.shutdown()
 		client = null
 		synchronized(sentCommands) {
 			sentCommands.clear()
@@ -105,7 +106,7 @@ internal class TransportWebSockets(private val httpClientFactory: HttpClientFact
 		hton.putInt(0)
 		System.arraycopy(data, 0, buffer, 9, data.size)
 		// Sadly, there's no way to pass a byte[] to a new or existing okio ByteString without copying the data
-		socket?.send(ByteString.of(buffer, 0, buffer.size))
+		socket?.send(buffer.toByteString(0, buffer.size))
 	}
 
 	override fun sendImageData(imageId: Int, tag: Int, data: ByteArray) {
@@ -115,13 +116,13 @@ internal class TransportWebSockets(private val httpClientFactory: HttpClientFact
 		hton.putInt(imageId)
 		hton.putInt(tag)
 		System.arraycopy(data, 0, buffer, 9, data.size)
-		socket?.send(ByteString.of(buffer, 0, buffer.size))
+		socket?.send(buffer.toByteString(0, buffer.size))
 	}
 
 	/**
 	 * Invoked when a web socket has been accepted by the remote peers.
 	 */
-	override fun onOpen(webSocket: WebSocket?, response: Response?) {
+	override fun onOpen(webSocket: WebSocket, response: Response) {
 		val h = handler
 		h?.sendMessage(h.obtainMessage(SOCKET_EVENT, object : SocketEvent(socket) {
 			override fun process(transport: TransportWebSockets) {
@@ -134,8 +135,7 @@ internal class TransportWebSockets(private val httpClientFactory: HttpClientFact
 	/**
 	 * Invoked when a text (type 0x1) message has been received.
 	 */
-	override fun onMessage(webSocket: WebSocket?, text: String?) {
-		if (text == null) return
+	override fun onMessage(webSocket: WebSocket, text: String) {
 		var json: JSONObject? = null
 		try {
 			json = JSONObject(text)
@@ -153,8 +153,8 @@ internal class TransportWebSockets(private val httpClientFactory: HttpClientFact
 	/**
 	 * Invoked when a binary (type 0x2) message has been received.
 	 */
-	override fun onMessage(webSocket: WebSocket?, bytes: ByteString?) {
-		if (bytes == null || bytes.size() <= 1) return
+	override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
+		if (bytes.size <= 1) return
 		val h = handler
 		h?.sendMessage(h.obtainMessage(SOCKET_EVENT, object : SocketEvent(socket) {
 			override fun process(transport: TransportWebSockets) {
@@ -166,20 +166,20 @@ internal class TransportWebSockets(private val httpClientFactory: HttpClientFact
 	/**
 	 *  Invoked when the peer has indicated that no more incoming messages will be transmitted.
 	 */
-	override fun onClosing(webSocket: WebSocket?, code: Int, reason: String?) {
+	override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
 		handleServerDisconnect()
 	}
 
 	/**
 	 * Invoked when both peers have indicated that no more messages will be transmitted.
 	 */
-	override fun onClosed(webSocket: WebSocket?, code: Int, reason: String?) {
+	override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
 	}
 
 	/**
 	 * Invoked when a web socket has been closed due to an error.
 	 */
-	override fun onFailure(webSocket: WebSocket?, t: Throwable?, response: Response?) {
+	override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
 		handleServerDisconnect()
 	}
 
@@ -221,8 +221,8 @@ internal class TransportWebSockets(private val httpClientFactory: HttpClientFact
 	}
 
 	private fun processIncomingMessage(bytes: ByteString) {
-		when (bytes.getByte(0)) {
-			PACKET_TYPE_STREAM -> if (bytes.size() > 9) {
+		when (bytes[0]) {
+			PACKET_TYPE_STREAM -> if (bytes.size > 9) {
 				val data = bytes.toByteArray()
 				val ntoh = ByteBuffer.wrap(data, 1, 8).order(ByteOrder.BIG_ENDIAN)
 				val streamId = ntoh.int
@@ -230,7 +230,7 @@ internal class TransportWebSockets(private val httpClientFactory: HttpClientFact
 				events?.onIncomingVoiceStreamData(streamId, packetId, data.copyOfRange(9, data.size))
 			}
 
-			PACKET_TYPE_IMAGE -> if (bytes.size() > 9) {
+			PACKET_TYPE_IMAGE -> if (bytes.size > 9) {
 				val data = bytes.toByteArray()
 				val ntoh = ByteBuffer.wrap(data, 1, 8).order(ByteOrder.BIG_ENDIAN)
 				val imageId = ntoh.int

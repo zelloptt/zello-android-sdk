@@ -5,7 +5,7 @@ import android.content.Context;
 import com.zello.channel.sdk.SessionLogger;
 
 /**
- * @exclude Not for public use
+ * Not for public use.
  */
 public class DecoderOpus extends DecoderBase implements AudioReceiverEvents {
 

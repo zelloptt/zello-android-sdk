@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Handler
+import android.os.Looper
 import androidx.core.content.ContextCompat
 import com.zello.channel.sdk.image.ImageMessageManager
 import com.zello.channel.sdk.image.ImageMessageManagerImpl
@@ -32,7 +33,7 @@ internal class SessionContextAndroid(context: Context) : SessionContext {
 
 	private val context: Context = context.applicationContext
 	private var logger: SessionLogger = SessionLoggerNull()
-	private var handler: Handler = Handler()
+	private var handler: Handler = Handler(Looper.myLooper() ?: Looper.getMainLooper())
 
 	override val transportFactory: TransportFactory = WebSocketsTransportFactory()
 	override val locationManager = LocationManagerImpl(context, AndroidLocationManagerImpl(context.getSystemService(Context.LOCATION_SERVICE) as android.location.LocationManager))
